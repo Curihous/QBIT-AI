@@ -15,8 +15,6 @@ class Settings(BaseSettings):
     openai_model: str
     openai_max_tokens: int 
     openai_temperature: float 
-    retry_attempts: int
-    retry_delay: int 
 
     # 서버 설정
     server_host: str
@@ -27,7 +25,7 @@ class Settings(BaseSettings):
     allowed_origins: str
 
     # 로깅 설정
-    log_level: str = "INFO"
+    log_level: str
 
     @property
     def allowed_origins_list(self) -> list[str]:

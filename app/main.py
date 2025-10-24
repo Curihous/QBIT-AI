@@ -13,6 +13,9 @@ from app.routers import report_router
 settings = get_settings()
 
 # 구조화된 로깅 설정
+import logging
+log_level = getattr(logging, settings.log_level.upper(), logging.INFO)
+
 structlog.configure(
     processors=[
         structlog.contextvars.merge_contextvars,
@@ -20,9 +23,7 @@ structlog.configure(
         structlog.processors.TimeStamper(fmt="iso"),
         structlog.processors.JSONRenderer()
     ],
-    wrapper_class=structlog.make_filtering_bound_logger(
-        getattr(structlog, settings.log_level.upper(), structlog.INFO)
-    ),
+    wrapper_class=structlog.make_filtering_bound_logger(log_level),
     context_class=dict,
     logger_factory=structlog.PrintLoggerFactory(),
     cache_logger_on_first_use=True,
