@@ -6,6 +6,10 @@ BE 서버에서 데이터를 가져와서 AI 서버에 리포트 생성 요청
 import httpx
 import asyncio
 import json
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 
 async def test_report_generation():
@@ -19,13 +23,20 @@ async def test_report_generation():
     trade_cycle_id = 1
     interval = "1h"
     
+    # BE 서버 액세스 토큰
+    be_access_token = os.getenv("BE_ACCESS_TOKEN")
+    if not be_access_token:
+        print("❌ BE_ACCESS_TOKEN이 설정되지 않았습니다.")
+        return
+    
     async with httpx.AsyncClient(timeout=60.0) as client:
         # 1. BE 서버에서 데이터 가져오기
         print(f"📥 BE 서버에서 TradeCycle 데이터 조회 중... (ID: {trade_cycle_id})")
         try:
             be_response = await client.get(
                 f"{be_server_url}/trade-cycles/{trade_cycle_id}",
-                params={"interval": interval}
+                params={"interval": interval},
+                headers={"Authorization": f"Bearer {be_access_token}"}
             )
             be_response.raise_for_status()
             trade_data = be_response.json()

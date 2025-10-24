@@ -14,7 +14,10 @@ class Settings(BaseSettings):
     openai_api_key: str
     openai_model: str
     openai_max_tokens: int 
-    openai_temperature: float 
+    openai_temperature: float
+    
+    # BE 서버 설정
+    be_access_token: str 
 
     # 서버 설정
     server_host: str
