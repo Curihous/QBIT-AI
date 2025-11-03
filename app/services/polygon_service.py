@@ -92,103 +92,12 @@ class PolygonService:
             )
             raise Exception(f"Polygon API 호출 중 오류: {str(e)}")
     
-    async def get_top_tickers_screener(
-        self,
-        limit: int = 1000,
-        order_by: str = "marketCap",
-        sort: str = "desc",
-        next_url: Optional[str] = None
-    ) -> Dict[str, Any]:
-        """
-        Stocks Screener API로 시가총액 기준 Top 티커 리스트 조회
-        
-        Args:
-            limit: 한 번에 가져올 최대 개수 (최대 1000)
-            order_by: 정렬 기준 (marketCap)
-            sort: 정렬 순서 (desc: 내림차순, asc: 오름차순)
-            next_url: 페이지네이션을 위한 다음 페이지 URL
-        
-        Returns:
-            {
-                "results": [...],
-                "next_url": "..." or None
-            }
-        """
-        try:
-            url = f"{self.base_url}/v1/market/stocks/screener"
-            
-            if next_url:
-                # next_url이 있으면 해당 URL 사용 (이미 파라미터 포함됨)
-                full_url = next_url
-                # next_url에 apiKey가 없으면 추가
-                if "apiKey" not in full_url:
-                    separator = "&" if "?" in full_url else "?"
-                    full_url = f"{full_url}{separator}apiKey={self.api_key}"
-            else:
-                # 첫 번째 요청: POST 본문에 파라미터 포함
-                full_url = f"{url}?apiKey={self.api_key}"
-            
-            request_body = {
-                "orderBy": order_by,
-                "sort": sort,
-                "limit": min(limit, 1000)
-            } if not next_url else None
-            
-            logger.info(
-                "polygon_screener_api_call",
-                endpoint="/v1/market/stocks/screener",
-                limit=limit,
-                order_by=order_by,
-                sort=sort,
-                has_next_url=bool(next_url)
-            )
-            
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                if next_url:
-                    # 다음 페이지: GET 요청
-                    response = await client.get(full_url)
-                else:
-                    # 첫 페이지: POST 요청
-                    response = await client.post(full_url, json=request_body)
-                
-                response.raise_for_status()
-                data = response.json()
-                
-                # 응답 데이터 확인
-                sample_result = data.get("results", [])[0] if data.get("results") else {}
-                logger.info(
-                    "polygon_screener_api_call_success",
-                    result_count=len(data.get("results", [])),
-                    has_next=bool(data.get("next_url")),
-                    sample_fields=list(sample_result.keys())[:10] if sample_result else []
-                )
-                
-                return data
-                
-        except httpx.HTTPStatusError as e:
-            error_detail = e.response.text[:500] if e.response.text else "No error detail"
-            logger.error(
-                "polygon_screener_api_call_failed",
-                status_code=e.response.status_code,
-                response=error_detail,
-                url=full_url,
-                request_body=request_body
-            )
-            raise Exception(f"Polygon Screener API 호출 실패: {e.response.status_code} - {error_detail}")
-        except Exception as e:
-            logger.error(
-                "polygon_screener_api_call_error",
-                error=str(e),
-                error_type=type(e).__name__
-            )
-            raise Exception(f"Polygon Screener API 호출 중 오류: {str(e)}")
-    
     async def get_ticker_details(self, ticker: str) -> Optional[Dict[str, Any]]:
         """
-        개별 티커의 상세 정보 조회 (market_cap 포함)
+        개별 티커의 상세 정보 조회 
         
         Args:
-            ticker: 티커 심볼 (예: "AAPL")
+            ticker: 티커 심볼 
         
         Returns:
             티커 상세 정보 (market_cap 포함)
@@ -225,23 +134,17 @@ class PolygonService:
     async def get_top_3000_tickers(self) -> List[Dict[str, Any]]:
         """
         시가총액 기준 상위 3000개 티커 조회
-        
-        프로세스:
-        1. 티커 목록을 먼저 충분히 수집 (8000개 - market_cap이 없는 종목이 많아서 여유 있게)
-        2. 각 티커의 상세 정보를 순차적으로 조회하여 market_cap 수집 (배치 10개씩)
-        3. market_cap 기준으로 정렬
-        4. 상위 3000개 반환
-        
+
         Returns:
             시가총액 기준 정렬된 티커 리스트 (최대 3000개)
         """
         import asyncio
         
-        # 1. 티커 목록 먼저 충분히 수집 (8000개 - market_cap이 없는 종목이 많아서 여유 있게)
+        # 1. 티커 목록 수집: 6000개 (market_cap 비율 고려)
         all_tickers = []
         cursor = None
         page = 1
-        target_collect = 8000  # 3000개 확보를 위해 충분히 많이 수집
+        target_collect = 6000  
         
         logger.info("polygon_starting_ticker_collection", target=target_collect)
         
@@ -265,9 +168,9 @@ class PolygonService:
             total_count=len(all_tickers)
         )
         
-        # 2. 각 티커의 market_cap 정보 순차적으로 조회 (작은 배치로)
+        # 2. 각 티커의 market_cap 정보 순차적으로 조회 
         tickers_with_market_cap = []
-        batch_size = 10  # 작은 배치로 줄임 (API 제한 방지)
+        batch_size = 10  
         processed_tickers = set()
         
         for i in range(0, len(all_tickers), batch_size):
