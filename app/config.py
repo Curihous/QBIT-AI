@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     db_name: str
     db_user: str
     db_password: str
-    
+
     # 서버 설정
     server_host: str
     server_port: int

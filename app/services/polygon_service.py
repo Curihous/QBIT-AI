@@ -4,6 +4,7 @@ Polygon.io API 호출 서비스: Top 3000 유동성 종목 리스트 조회
 import httpx
 import structlog
 from typing import Optional, List, Dict, Any
+from datetime import datetime, timedelta
 from app.config import get_settings
 
 logger = structlog.get_logger()
@@ -11,7 +12,7 @@ logger = structlog.get_logger()
 
 class PolygonService:
     """
-    Polygon.io API를 호출하여 주식 데이터를 가져오는 서비스
+    Polygon.io API 호출하여 주식 데이터를 가져오는 서비스
     """
     
     def __init__(self):
@@ -27,12 +28,12 @@ class PolygonService:
         cursor: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Top 티커 리스트 조회 (목록만)
+        Top 티커 리스트 조회: 티커 심볼 반환용 
         
         Args:
             limit: 한 번에 가져올 최대 개수 (최대 1000)
-            market: 시장 유형 (stocks)
-            active: 활성 종목만 (True)
+            market: 시장 유형
+            active: 활성 종목만
             cursor: 페이지네이션 커서 (다음 페이지 조회용)
         
         Returns:
@@ -92,15 +93,10 @@ class PolygonService:
             )
             raise Exception(f"Polygon API 호출 중 오류: {str(e)}")
     
+
     async def get_ticker_details(self, ticker: str) -> Optional[Dict[str, Any]]:
         """
-        개별 티커의 상세 정보 조회 
-        
-        Args:
-            ticker: 티커 심볼 
-        
-        Returns:
-            티커 상세 정보 (market_cap 포함)
+        개별 티커의 상세 정보 조회 (심볼 이용해 market_cap 등 반환)
         """
         try:
             url = f"{self.base_url}/v3/reference/tickers/{ticker}"
@@ -134,9 +130,6 @@ class PolygonService:
     async def get_top_3000_tickers(self) -> List[Dict[str, Any]]:
         """
         시가총액 기준 상위 3000개 티커 조회
-
-        Returns:
-            시가총액 기준 정렬된 티커 리스트 (최대 3000개)
         """
         import asyncio
         
@@ -215,10 +208,10 @@ class PolygonService:
             if len(tickers_with_market_cap) >= 3000:
                 break
             
-            # API 제한 방지 (배치 간 대기 증가)
+           
             await asyncio.sleep(0.5)
         
-        # 3. market_cap 기준 정렬 (내림차순)
+        # 3. market_cap 기준 내림차순 정렬
         tickers_with_market_cap.sort(
             key=lambda x: x.get("market_cap", 0) or 0,
             reverse=True
@@ -234,6 +227,109 @@ class PolygonService:
         
         # 4. 상위 3000개 반환
         return tickers_with_market_cap[:3000]  
+    
+    async def get_aggregates(
+        self,
+        ticker: str,
+        days: int = 90,
+        multiplier: int = 1,
+        timespan: str = "day"
+    ) -> Optional[List[Dict[str, Any]]]:
+        """
+        티커의 과거 가격 데이터 조회 (Aggregates API)
+        
+        Args:
+            ticker: 티커 심볼 (예: "AAPL")
+            days: 조회할 일수 (기본값: 90일)
+            multiplier: 시간 단위 배수 (기본값: 1)
+            timespan: 시간 단위 ("day", "hour", "minute" 등. 기본값: "day")
+        
+        Returns:
+            일봉 데이터 리스트: [
+                {
+                    "timestamp": 1696118400000,  # Unix timestamp (ms)
+                    "date": "2023-10-01",        # 날짜 문자열
+                    "close": 175.43,             # 종가
+                    "volume": 50000000,          # 거래량
+                    ...
+                },
+                ...
+            ]
+            실패 시 None
+        """
+        try:
+            # 날짜 계산: 오늘부터 days일 전까지
+            to_date = datetime.now()
+            from_date = to_date - timedelta(days=days)
+            
+            # Polygon API 형식: YYYY-MM-DD
+            from_str = from_date.strftime("%Y-%m-%d")
+            to_str = to_date.strftime("%Y-%m-%d")
+            
+            url = f"{self.base_url}/v2/aggs/ticker/{ticker}/range/{multiplier}/{timespan}/{from_str}/{to_str}"
+            params = {"apiKey": self.api_key}
+            
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.get(url, params=params)
+                response.raise_for_status()
+                data = response.json()
+                
+                results = data.get("results", [])
+                if not results:
+                    logger.warning(
+                        "aggregates_no_data",
+                        ticker=ticker,
+                        from_date=from_str,
+                        to_date=to_str
+                    )
+                    return None
+                
+                # 데이터 정리: timestamp를 날짜 문자열로 추가
+                formatted_results = []
+                for item in results:
+                    timestamp_ms = item.get("t", 0)  # t = timestamp (밀리초)
+                    if timestamp_ms:
+                        date_obj = datetime.fromtimestamp(timestamp_ms / 1000)
+                        date_str = date_obj.strftime("%Y-%m-%d")
+                    else:
+                        date_str = None
+                    
+                    formatted_results.append({
+                        "timestamp": timestamp_ms,
+                        "date": date_str,
+                        "open": item.get("o"),      # open
+                        "high": item.get("h"),      # high
+                        "low": item.get("l"),       # low
+                        "close": item.get("c"),     # close
+                        "volume": item.get("v"),    # volume
+                    })
+                
+                logger.debug(
+                    "aggregates_fetched",
+                    ticker=ticker,
+                    count=len(formatted_results),
+                    from_date=from_str,
+                    to_date=to_str
+                )
+                
+                return formatted_results
+                
+        except httpx.HTTPStatusError as e:
+            logger.warning(
+                "aggregates_api_failed",
+                ticker=ticker,
+                status_code=e.response.status_code,
+                response=e.response.text[:200] if e.response.text else ""
+            )
+            return None
+        except Exception as e:
+            logger.warning(
+                "aggregates_api_error",
+                ticker=ticker,
+                error=str(e),
+                error_type=type(e).__name__
+            )
+            return None
     
     def _extract_cursor_from_url(self, url: str) -> Optional[str]:
         """

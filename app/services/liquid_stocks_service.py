@@ -117,3 +117,13 @@ class LiquidStocksService:
         query = "SELECT COUNT(*) FROM liquid_stocks"
         count = await self.db_service.fetchval(query)
         return count or 0
+    
+    # 모든 티커 리스트 조회: 시가총액 내림차순 정렬 후 티커 문자열 리스트 반환
+    async def get_all_tickers(self) -> List[str]:
+        """DB에 저장된 모든 티커 리스트 조회"""
+        if not self.db_service:
+            raise Exception("DB 서비스가 초기화되지 않았습니다.")
+        
+        query = "SELECT ticker FROM liquid_stocks ORDER BY market_cap DESC"
+        rows = await self.db_service.fetch(query)
+        return [row["ticker"] for row in rows] if rows else []
