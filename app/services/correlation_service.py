@@ -231,11 +231,6 @@ class CorrelationService:
             raise Exception("DB 서비스가 초기화되지 않았습니다.")
         
         try:
-            # 기존 데이터 삭제
-            delete_query = "DELETE FROM correlations"
-            await self.db_service.execute(delete_query)
-            logger.info("correlation_old_data_deleted")
-            
             # 상관계수 데이터 준비
             insert_query = """
                 INSERT INTO correlations (ticker, related_ticker, correlation)
@@ -247,6 +242,11 @@ class CorrelationService:
             
             async with self.db_service.pool.acquire() as conn:
                 async with conn.transaction():
+                    # 기존 데이터 삭제 (트랜잭션 내에서 실행)
+                    delete_query = "DELETE FROM correlations"
+                    await conn.execute(delete_query)
+                    logger.info("correlation_old_data_deleted")
+                    
                     for ticker in tickers:
                         # 자기 자신 제외하고 상관계수 가져오기
                         ticker_correlations = correlation_matrix[ticker].drop(ticker)
