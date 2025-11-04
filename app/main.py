@@ -15,6 +15,7 @@ from app.routers import report_router, news_router
 from app.routers.news import init_services as init_news_services
 from app.services.db_service import DatabaseService
 from app.services.liquid_stocks_service import LiquidStocksService
+from app.services.correlation_service import CorrelationService
 
 # 설정 로드
 settings = get_settings()
@@ -47,6 +48,7 @@ scheduler = AsyncIOScheduler()
 # 서비스 인스턴스 (lifespan에서 초기화)
 db_service = DatabaseService()
 liquid_stocks_service = LiquidStocksService()
+correlation_service = CorrelationService()
 
 
 async def update_liquid_stocks_job():
@@ -60,6 +62,35 @@ async def update_liquid_stocks_job():
     except Exception as e:
         logger.error(
             "liquid_stocks_update_job_failed",
+            error=str(e),
+            error_type=type(e).__name__
+        )
+
+
+async def update_correlations_job():
+    """
+    주 1회 상관계수 계산 및 저장 (유동성 종목 업데이트 후 실행)
+    """
+    try:
+        logger.info("correlations_update_job_started")
+        result = await correlation_service.calculate_and_save_correlations(
+            days=90,
+            max_concurrent=8
+        )
+        if result.get("success"):
+            logger.info(
+                "correlations_update_job_completed",
+                processed_tickers=result.get("processed_tickers"),
+                correlations_saved=result.get("correlations_saved")
+            )
+        else:
+            logger.error(
+                "correlations_update_job_failed",
+                error=result.get("error")
+            )
+    except Exception as e:
+        logger.error(
+            "correlations_update_job_failed",
             error=str(e),
             error_type=type(e).__name__
         )
@@ -83,8 +114,12 @@ async def lifespan(app: FastAPI):
         await liquid_stocks_service.initialize(db_service)
         logger.info("liquid_stocks_service_initialized")
         
+        # Correlation 서비스 초기화
+        await correlation_service.initialize(liquid_stocks_service, db_service)
+        logger.info("correlation_service_initialized")
+        
         # News 라우터 서비스 초기화
-        init_news_services(db_service, liquid_stocks_service, limiter)
+        init_news_services(db_service, liquid_stocks_service, correlation_service, limiter)
         logger.info("news_router_initialized")
         
         # 스케줄러 등록
@@ -94,6 +129,15 @@ async def lifespan(app: FastAPI):
             trigger=CronTrigger(day_of_week='sun', hour=3, minute=0),
             id='update_liquid_stocks',
             name='Update Liquid Stocks Top 3000',
+            replace_existing=True
+        )
+        
+        # 주 1회 (일요일 새벽 3시 5분) 상관계수 계산 (유동성 종목 업데이트 후 실행)
+        scheduler.add_job(
+            update_correlations_job,
+            trigger=CronTrigger(day_of_week='sun', hour=3, minute=5),
+            id='update_correlations',
+            name='Update Correlations',
             replace_existing=True
         )
         
