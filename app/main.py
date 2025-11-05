@@ -98,6 +98,32 @@ async def update_correlations_job():
         )
 
 
+async def generate_columns_job():
+    """
+    매일 새벽 5시 핵심 종목 칼럼 자동 생성 (core_stock.py 참조)
+    """
+    try:
+        logger.info("columns_generation_job_started")
+        result = await news_column_service.generate_all_columns()
+        if result.get("success"):
+            logger.info(
+                "columns_generation_job_completed",
+                total_success=result.get("total_success"),
+                total_failed=result.get("total_failed")
+            )
+        else:
+            logger.error(
+                "columns_generation_job_failed",
+                error=result.get("error")
+            )
+    except Exception as e:
+        logger.error(
+            "columns_generation_job_failed",
+            error=str(e),
+            error_type=type(e).__name__
+        )
+
+
 
 
 @asynccontextmanager
@@ -149,6 +175,14 @@ async def lifespan(app: FastAPI):
             replace_existing=True
         )
         
+        # 매일 새벽 5시 핵심 종목 169개 칼럼 자동 생성
+        scheduler.add_job(
+            generate_columns_job,
+            trigger=CronTrigger(hour=5, minute=0),
+            id='generate_columns',
+            name='Generate News Columns for Core Stocks',
+            replace_existing=True
+        )
         
         scheduler.start()
         logger.info("scheduler_started")
