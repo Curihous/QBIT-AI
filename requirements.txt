@@ -11,4 +11,6 @@ pandas>=2.3.2
 pandas-ta==0.4.71b0
 asyncpg>=0.29.0
 apscheduler>=3.10.0
+beautifulsoup4>=4.12.0
+summa>=1.2.0
 

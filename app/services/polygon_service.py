@@ -18,7 +18,6 @@ class PolygonService:
     
     def __init__(self):
         self.settings = get_settings()
-        # Polygon.io가 Massive.com으로 브랜드 변경됨
         # 모든 엔드포인트는 api.massive.com에서 정상 동작
         self.base_url = "https://api.massive.com"
         self.api_key = self.settings.polygon_api_key
@@ -357,10 +356,10 @@ class PolygonService:
         sort: str = "published_utc"
     ) -> Optional[List[Dict[str, Any]]]:
         """
-        Massive.com News API로 특정 종목의 뉴스 조회
+        News API로 특정 종목의 뉴스 조회
         
         Args:
-            ticker: 티커 심볼 (예: "AAPL")
+            ticker: 티커 심볼
             limit: 반환할 최대 개수 (기본값: 10, 최대: 1000)
             published_utc: 날짜 필터 (YYYY-MM-DD 형식)
             order: 정렬 순서 ("asc" 또는 "desc", 기본값: "desc")
@@ -393,9 +392,11 @@ class PolygonService:
             }
             
             if published_utc:
-                params["published_utc"] = published_utc
+                # Massive.com API는 "published_utc.gte" 형식 사용
+                # 예: "2025-11-04" → 2025-11-04 이후 뉴스만
+                params["published_utc.gte"] = published_utc
             
-            # API 키는 헤더에 포함 (Massive.com도 동일한 API 키 사용 가정)
+            # API 키는 헤더에 포함 
             headers = {
                 "Authorization": f"Bearer {self.api_key}"
             }
