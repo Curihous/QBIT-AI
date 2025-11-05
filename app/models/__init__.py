@@ -1,10 +1,11 @@
-from .request import CandleData, TradePoint, GenerateReportRequest
-from .response import GenerateReportResponse
+"""
+데이터 모델 스키마
+"""
+
+from app.models.column_schema import Column, ColumnContent, ColumnSection
 
 __all__ = [
-    "CandleData",
-    "TradePoint",
-    "GenerateReportRequest",
-    "GenerateReportResponse",
+    "Column",
+    "ColumnContent",
+    "ColumnSection",
 ]
-

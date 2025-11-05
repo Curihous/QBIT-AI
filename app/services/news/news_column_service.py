@@ -2,7 +2,7 @@
 AI 칼럼 생성 서비스: 핵심 종목별 뉴스 칼럼 생성
 - Pass 1: 직접 뉴스 검색
 - Pass 2: 상관 종목의 간접 뉴스 검색
-- 크롤링 → TextRank 요약
+- 크롤링 → TextRank 요약 → ChatGPT 칼럼 생성
 """
 
 import asyncio
@@ -15,6 +15,8 @@ from app.services.polygon_service import PolygonService
 from app.services.correlation_service import CorrelationService
 from app.services.news.text_processor import TextProcessor
 from app.services.news.article_scraper import ArticleScraper
+from app.services.news.chatgpt_client import ChatGPTClient
+from app.models.column_schema import Column
 from app.core_stock import CORE_STOCK_ASSETS
 
 logger = structlog.get_logger()
@@ -31,6 +33,7 @@ class NewsColumnService:
         self.correlation_service = None
         self.text_processor = TextProcessor()
         self.article_scraper = ArticleScraper()
+        self.chatgpt_client = ChatGPTClient()
     
     async def initialize(self, correlation_service: CorrelationService):
         """서비스 초기화"""
@@ -38,7 +41,7 @@ class NewsColumnService:
     
     async def generate_all_columns(self, limit: Optional[int] = None) -> Dict[str, Any]:
         """
-        CORE_STOCK_ASSETS (169개)에 대해 AI 칼럼 생성
+        핵심 종목(169개)에 대해 AI 칼럼 생성
         
         Args:
             limit: 처리할 최대 종목 수 (None이면 전체)
@@ -178,28 +181,46 @@ class NewsColumnService:
                     logger.debug("pass1_no_news", ticker=ticker)
                     continue
                 
-                # 주 종목 전용 기사 우선 선택
+                # 관련성 높은 기사 선택 (우선순위 기반)
                 news_article = None
+                
+                # 1순위: tickers[0]이 검색 종목인 기사 (주 종목)
                 for article in news_list:
                     article_tickers = article.get("tickers", [])
-                    if len(article_tickers) == 1 and article_tickers[0].upper() == ticker.upper():
+                    if article_tickers and article_tickers[0].upper() == ticker.upper():
                         news_article = article
                         logger.debug(
-                            "pass1_dedicated_article_found",
+                            "pass1_primary_ticker_found",
                             ticker=ticker,
                             title=article.get("title", "")[:50]
                         )
                         break
                 
-                # 전용 기사가 없으면 첫 번째 기사 사용
+                # 2순위: tickers 1~2번째에 검색 종목이 있는 기사
                 if not news_article:
-                    news_article = news_list[0]
-                    related_tickers = news_list[0].get("tickers", [])
+                    for article in news_list:
+                        article_tickers = article.get("tickers", [])
+                        if len(article_tickers) >= 2:
+                            # 1번째 또는 2번째에 ticker가 있는지 확인
+                            if ticker.upper() in [t.upper() for t in article_tickers[:2]]:
+                                news_article = article
+                                logger.debug(
+                                    "pass1_secondary_ticker_found",
+                                    ticker=ticker,
+                                    position=article_tickers.index(ticker.upper()) + 1 if ticker.upper() in [t.upper() for t in article_tickers] else 0,
+                                    title=article.get("title", "")[:50]
+                                )
+                                break
+                
+                # 관련성 낮은 기사만 있으면 Pass 1 실패
+                if not news_article:
+                    failed_tickers.append(ticker)
                     logger.debug(
-                        "pass1_using_related_article",
+                        "pass1_no_relevant_article",
                         ticker=ticker,
-                        article_tickers=related_tickers[:3]
+                        message="검색 종목이 주요 종목이 아닌 기사만 존재"
                     )
+                    continue
                 
                 # AI 칼럼 생성
                 column_data = await self._generate_column_from_news(
@@ -210,13 +231,8 @@ class NewsColumnService:
                 
                 if column_data:
                     success_count += 1
-                    success_results.append({
-                        "ticker": ticker,
-                        "content": column_data["content"],
-                        "image_url": column_data.get("image_url"),
-                        "source_url": column_data.get("source_url")
-                    })
-                    logger.info("pass1_success", ticker=ticker, content_preview=column_data["content"][:100])
+                    success_results.append(column_data)  # 전체 칼럼 데이터 추가
+                    logger.info("pass1_success", ticker=ticker, title=column_data.get("title", "")[:50])
                 else:
                     failed_tickers.append(ticker)
                     logger.warning("pass1_column_generation_failed", ticker=ticker)
@@ -291,18 +307,12 @@ class NewsColumnService:
                     
                     if column_data:
                         success_count += 1
-                        success_results.append({
-                            "ticker": ticker,
-                            "content": column_data["content"],
-                            "image_url": column_data.get("image_url"),
-                            "source_url": column_data.get("source_url"),
-                            "source_ticker": source_ticker
-                        })
+                        success_results.append(column_data)  # 전체 칼럼 데이터 추가
                         logger.info(
                             "pass2_success",
                             ticker=ticker,
                             source_ticker=source_ticker,
-                            content_preview=column_data["content"][:100]
+                            title=column_data.get("title", "")[:50]
                         )
                     else:
                         still_failed.append(ticker)
@@ -353,6 +363,8 @@ class NewsColumnService:
             image_url = news_article.get("image_url")
             title = news_article.get("title", "")
             description = news_article.get("description", "")
+            published_at = news_article.get("published_utc", "")
+            publisher = news_article.get("publisher", {}).get("name", "Unknown")
             
             if not article_url:
                 logger.warning("news_no_article_url", ticker=ticker)
@@ -380,15 +392,33 @@ class NewsColumnService:
             if not key_sentences:
                 key_sentences = article_text[:800]
             
-            # 테스트용: TextRank 요약 결과를 바로 반환 (최대 800자)
-            ai_content = f"[테스트 모드 - TextRank 요약]\n제목: {title}\n\n요약:\n{key_sentences[:800]}"
+            # 4. ChatGPT로 칼럼 생성
+            column_content = await self.chatgpt_client.generate_column(
+                ticker=ticker,
+                news_title=title,
+                key_sentences=key_sentences
+            )
             
-            return {
-                "content": ai_content,
-                "image_url": image_url,
-                "source_url": article_url,
-                "source_ticker": source_ticker
-            }
+            if not column_content:
+                logger.warning("chatgpt_generation_failed", ticker=ticker)
+                return None
+            
+            # 5. Column 스키마로 반환
+            column = Column(
+                ticker=ticker,
+                title=column_content.title,
+                subtitle=column_content.subtitle,
+                sections=column_content.sections,
+                image_url=image_url,
+                source_title=title,
+                source_publisher=publisher,
+                source_url=article_url,
+                source_published_at=published_at,
+                generated_at=datetime.utcnow().isoformat(),
+                source_ticker=source_ticker if source_ticker != ticker else None
+            )
+            
+            return column.model_dump()
             
         except Exception as e:
             logger.warning(
