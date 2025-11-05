@@ -262,7 +262,14 @@ async def crawl_and_summarize(ticker: str) -> dict[str, Any]:
         ticker: 종목 심볼 (예: AAPL)
     
     Returns:
-        생성된 AI 칼럼 (JSON)
+        dict: 칼럼 생성 결과
+            - success (bool): 성공 여부
+            - total_tickers (int): 처리한 종목 수
+            - pass1_success (int): Pass 1 성공 수
+            - pass2_success (int): Pass 2 성공 수
+            - total_success (int): 전체 성공 수
+            - failed (int): 실패 수
+            - results (list): 생성된 칼럼 리스트
     """
     try:
         if not news_column_service:

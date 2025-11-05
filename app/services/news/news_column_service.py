@@ -198,16 +198,20 @@ class NewsColumnService:
                 
                 # 2순위: tickers 1~2번째에 검색 종목이 있는 기사
                 if not news_article:
+                    ticker_upper = ticker.upper()
                     for article in news_list:
                         article_tickers = article.get("tickers", [])
                         if len(article_tickers) >= 2:
-                            # 1번째 또는 2번째에 ticker가 있는지 확인
-                            if ticker.upper() in [t.upper() for t in article_tickers[:2]]:
+                            # 대소문자 구분 없이 비교하기 위해 정규화
+                            article_tickers_upper = [t.upper() for t in article_tickers]
+                            if ticker_upper in article_tickers_upper[:2]:
                                 news_article = article
+                                # case-insensitive index lookup
+                                position = next((idx + 1 for idx, t in enumerate(article_tickers_upper) if t == ticker_upper), 0)
                                 logger.debug(
                                     "pass1_secondary_ticker_found",
                                     ticker=ticker,
-                                    position=article_tickers.index(ticker.upper()) + 1 if ticker.upper() in [t.upper() for t in article_tickers] else 0,
+                                    position=position,
                                     title=article.get("title", "")[:50]
                                 )
                                 break
