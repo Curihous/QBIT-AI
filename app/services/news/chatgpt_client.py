@@ -130,7 +130,7 @@ class ChatGPTClient:
                     {"role": "user", "content": user_prompt}
                 ],
                 temperature=0.7,
-                response_format={"type": "json_object"}  # JSON 반환
+                response_format={"type": "json_object"}  # JSONh  반환
             )
             
             # 응답 파싱
