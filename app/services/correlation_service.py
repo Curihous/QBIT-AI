@@ -83,9 +83,10 @@ class CorrelationService:
                             ticker=ticker,
                             error=str(e)
                         )
-                    await asyncio.sleep(0.1)
+                    # Rate Limit 회피를 위한 delay
+                    await asyncio.sleep(0.2)
             
-            # 모든 티커에 대해 병렬 처리
+            # 3. 모든 티커에 대해 병렬 처리
             tasks = [fetch_with_semaphore(ticker) for ticker in tickers]
             await asyncio.gather(*tasks)
             

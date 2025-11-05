@@ -1,6 +1,7 @@
 """
 Polygon.io API 호출 서비스: Top 3000 유동성 종목 리스트 조회
 """
+import asyncio
 import httpx
 import structlog
 from typing import Optional, List, Dict, Any
@@ -17,7 +18,8 @@ class PolygonService:
     
     def __init__(self):
         self.settings = get_settings()
-        self.base_url = "https://api.polygon.io"
+        # 모든 엔드포인트는 api.massive.com에서 정상 동작
+        self.base_url = "https://api.massive.com"
         self.api_key = self.settings.polygon_api_key
     
     async def get_top_tickers(
@@ -133,11 +135,11 @@ class PolygonService:
         """
         import asyncio
         
-        # 1. 티커 목록 수집: 6000개 (market_cap 비율 고려)
+        # 1. 티커 목록 수집: 8000개 (market_cap 비율 고려, 3000개 확보 목표)
         all_tickers = []
         cursor = None
         page = 1
-        target_collect = 6000  
+        target_collect = 8000  
         
         logger.info("polygon_starting_ticker_collection", target=target_collect)
         
@@ -266,11 +268,25 @@ class PolygonService:
             from_str = from_date.strftime("%Y-%m-%d")
             to_str = to_date.strftime("%Y-%m-%d")
             
+            # httpx가 자동으로 URL 인코딩 처리
             url = f"{self.base_url}/v2/aggs/ticker/{ticker}/range/{multiplier}/{timespan}/{from_str}/{to_str}"
+            
             params = {"apiKey": self.api_key}
             
+            # 429 Rate Limit 에러는 재시도하지 않고 즉시 실패 처리
+            # (correlation_service에서 delay로 Rate Limit 회피)
             async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.get(url, params=params)
+                
+                # 429 Rate Limit 에러 처리 (재시도 없이 즉시 실패)
+                if response.status_code == 429:
+                    logger.warning(
+                        "aggregates_rate_limit",
+                        ticker=ticker,
+                        message="Rate limit exceeded, skipping"
+                    )
+                    return None
+                
                 response.raise_for_status()
                 data = response.json()
                 
@@ -325,6 +341,107 @@ class PolygonService:
         except Exception as e:
             logger.warning(
                 "aggregates_api_error",
+                ticker=ticker,
+                error=str(e),
+                error_type=type(e).__name__
+            )
+            return None
+    
+    async def get_news(
+        self,
+        ticker: str,
+        limit: int = 10,
+        published_utc: Optional[str] = None,
+        order: str = "desc",
+        sort: str = "published_utc"
+    ) -> Optional[List[Dict[str, Any]]]:
+        """
+        News API로 특정 종목의 뉴스 조회
+        
+        Args:
+            ticker: 티커 심볼
+            limit: 반환할 최대 개수 (기본값: 10, 최대: 1000)
+            published_utc: 날짜 필터 (YYYY-MM-DD 형식)
+            order: 정렬 순서 ("asc" 또는 "desc", 기본값: "desc")
+            sort: 정렬 필드 (기본값: "published_utc")
+        
+        Returns:
+            뉴스 기사 리스트: [
+                {
+                    "id": "...",
+                    "title": "...",
+                    "description": "...",
+                    "article_url": "...",
+                    "image_url": "...",
+                    "published_utc": "...",
+                    "tickers": ["AAPL", ...],
+                    ...
+                },
+                ...
+            ]
+            실패 시 None
+        """
+        try:
+            url = f"{self.base_url}/v2/reference/news"
+            
+            params = {
+                "ticker": ticker.upper(),
+                "limit": min(limit, 1000),
+                "order": order,
+                "sort": sort
+            }
+            
+            if published_utc:
+                # Massive.com API는 "published_utc.gte" 형식 사용
+                # 예: "2025-11-04" → 2025-11-04 이후 뉴스만
+                params["published_utc.gte"] = published_utc
+            
+            # API 키는 헤더에 포함 
+            headers = {
+                "Authorization": f"Bearer {self.api_key}"
+            }
+            
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.get(url, params=params, headers=headers)
+                
+                if response.status_code == 429:
+                    logger.warning(
+                        "news_api_rate_limit",
+                        ticker=ticker,
+                        message="Rate limit exceeded, skipping"
+                    )
+                    return None
+                
+                response.raise_for_status()
+                data = response.json()
+                
+                results = data.get("results", [])
+                if not results:
+                    logger.debug(
+                        "news_no_data",
+                        ticker=ticker
+                    )
+                    return None
+                
+                logger.debug(
+                    "news_fetched",
+                    ticker=ticker,
+                    count=len(results)
+                )
+                
+                return results
+                
+        except httpx.HTTPStatusError as e:
+            logger.warning(
+                "news_api_failed",
+                ticker=ticker,
+                status_code=e.response.status_code,
+                response=e.response.text[:200] if e.response.text else ""
+            )
+            return None
+        except Exception as e:
+            logger.warning(
+                "news_api_error",
                 ticker=ticker,
                 error=str(e),
                 error_type=type(e).__name__

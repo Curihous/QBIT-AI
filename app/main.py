@@ -16,6 +16,7 @@ from app.routers.news import init_services as init_news_services
 from app.services.db_service import DatabaseService
 from app.services.liquid_stocks_service import LiquidStocksService
 from app.services.correlation_service import CorrelationService
+from app.services.news import NewsColumnService
 
 # 설정 로드
 settings = get_settings()
@@ -49,6 +50,7 @@ scheduler = AsyncIOScheduler()
 db_service = DatabaseService()
 liquid_stocks_service = LiquidStocksService()
 correlation_service = CorrelationService()
+news_column_service = NewsColumnService()
 
 
 async def update_liquid_stocks_job():
@@ -96,6 +98,8 @@ async def update_correlations_job():
         )
 
 
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # 시작 시
@@ -118,8 +122,12 @@ async def lifespan(app: FastAPI):
         await correlation_service.initialize(liquid_stocks_service, db_service)
         logger.info("correlation_service_initialized")
         
+        # News Column 서비스 초기화
+        await news_column_service.initialize(correlation_service)
+        logger.info("news_column_service_initialized")
+        
         # News 라우터 서비스 초기화
-        init_news_services(db_service, liquid_stocks_service, correlation_service, limiter)
+        init_news_services(db_service, liquid_stocks_service, correlation_service, news_column_service, limiter)
         logger.info("news_router_initialized")
         
         # 스케줄러 등록
@@ -140,6 +148,7 @@ async def lifespan(app: FastAPI):
             name='Update Correlations',
             replace_existing=True
         )
+        
         
         scheduler.start()
         logger.info("scheduler_started")

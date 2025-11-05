@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     openai_temperature: float
     
     # BE 서버 설정
+    be_server_url: str = "https://api.qbit.o-r.kr"
     be_access_token: str 
     
     # Polygon API 설정
