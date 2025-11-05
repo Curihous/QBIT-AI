@@ -79,6 +79,12 @@ async def manual_update_liquid_stocks(request: Request) -> dict[str, Any]:
     description="DB에 저장된 유동성 종목 샘플을 조회합니다.",
 )
 async def get_liquid_stocks_sample(limit: int = 100) -> dict[str, Any]:
+    # 입력 검증
+    if limit < 1 or limit > 1000:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="limit은 1에서 1000 사이여야 합니다."
+        )
     """
     DB에 저장된 종목 샘플 조회
     """
@@ -244,18 +250,26 @@ async def get_news_api(ticker: str, days: int = 1) -> dict[str, Any]:
 
 @router.get(
     "/crawl/{ticker}",
-    summary="뉴스 크롤링 및 TextRank 요약",
-    description="특정 종목의 뉴스를 크롤링하고 TextRank 요약을 수행한 결과를 반환합니다.",
+    summary="AI 칼럼 생성",
+    description="특정 종목의 뉴스를 크롤링하고 ChatGPT로 초보자용 투자 칼럼을 생성합니다.",
 )
 async def crawl_and_summarize(ticker: str) -> dict[str, Any]:
     """
-    뉴스 크롤링 → TextRank 요약 결과 즉시 반환
+    AI 칼럼 생성 (전체 파이프라인)
+    뉴스 API → 크롤링 → TextRank 요약 → ChatGPT 칼럼 생성
     
     Args:
         ticker: 종목 심볼 (예: AAPL)
     
     Returns:
-        크롤링 및 요약 결과
+        dict: 칼럼 생성 결과
+            - success (bool): 성공 여부
+            - total_tickers (int): 처리한 종목 수
+            - pass1_success (int): Pass 1 성공 수
+            - pass2_success (int): Pass 2 성공 수
+            - total_success (int): 전체 성공 수
+            - failed (int): 실패 수
+            - results (list): 생성된 칼럼 리스트
     """
     try:
         if not news_column_service:

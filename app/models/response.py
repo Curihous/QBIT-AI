@@ -1,9 +1,14 @@
 from datetime import datetime
 from typing import Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class GenerateReportResponse(BaseModel):
+    model_config = ConfigDict(
+        populate_by_name=True,  # alias와 원본 이름 둘 다 허용
+        from_attributes=True
+    )
+    
     success: bool = Field(..., description="리포트 생성 성공 여부")
     trade_cycle_id: int = Field(..., alias="tradeCycleId", description="매매 사이클 ID")
     overall_evaluation: str = Field(..., alias="overallEvaluation", description="전체 매매 평가")
