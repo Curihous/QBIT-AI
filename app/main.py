@@ -148,8 +148,8 @@ async def lifespan(app: FastAPI):
         await correlation_service.initialize(liquid_stocks_service, db_service)
         logger.info("correlation_service_initialized")
         
-        # News Column 서비스 초기화
-        await news_column_service.initialize(correlation_service)
+        # News 칼럼 서비스 초기화
+        await news_column_service.initialize(correlation_service, db_service)
         logger.info("news_column_service_initialized")
         
         # News 라우터 서비스 초기화

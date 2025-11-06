@@ -13,9 +13,11 @@ from datetime import datetime, timedelta
 from app.config import get_settings
 from app.services.polygon_service import PolygonService
 from app.services.correlation_service import CorrelationService
+from app.services.db_service import DatabaseService
 from app.services.news.text_processor import TextProcessor
 from app.services.news.article_scraper import ArticleScraper
 from app.services.news.chatgpt_client import ChatGPTClient
+from app.services.news.news_db_repository import NewsColumnRepository
 from app.models.column_schema import Column
 from app.core_stock import CORE_STOCK_ASSETS
 
@@ -31,13 +33,15 @@ class NewsColumnService:
         self.settings = get_settings()
         self.polygon_service = PolygonService()
         self.correlation_service = None
+        self.repository = None
         self.text_processor = TextProcessor()
         self.article_scraper = ArticleScraper()
         self.chatgpt_client = ChatGPTClient()
     
-    async def initialize(self, correlation_service: CorrelationService):
+    async def initialize(self, correlation_service: CorrelationService, db_service: DatabaseService):
         """서비스 초기화"""
         self.correlation_service = correlation_service
+        self.repository = NewsColumnRepository(db_service)
     
     async def generate_all_columns(self, limit: Optional[int] = None) -> Dict[str, Any]:
         """
@@ -234,6 +238,10 @@ class NewsColumnService:
                 )
                 
                 if column_data:
+                    # DB에 저장
+                    if self.repository:
+                        await self.repository.save_column(column_data)
+                    
                     success_count += 1
                     success_results.append(column_data)  # 전체 칼럼 데이터 추가
                     logger.info("pass1_success", ticker=ticker, title=column_data.get("title", "")[:50])
@@ -310,6 +318,10 @@ class NewsColumnService:
                     )
                     
                     if column_data:
+                        # DB에 저장
+                        if self.repository:
+                            await self.repository.save_column(column_data)
+                        
                         success_count += 1
                         success_results.append(column_data)  # 전체 칼럼 데이터 추가
                         logger.info(
