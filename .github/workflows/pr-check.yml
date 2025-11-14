@@ -36,8 +36,8 @@ jobs:
     - name: Run linting
       run: |
         pip install flake8 black
-        flake8 app/ --count --select=E9,F63,F7,F82 --show-source --statistics || true
-        black --check app/ || true
+        flake8 app/ --count --select=E9,F63,F7,F82 --show-source --statistics
+        black --check app/
 
     - name: Set up Buildx
       uses: docker/setup-buildx-action@v3

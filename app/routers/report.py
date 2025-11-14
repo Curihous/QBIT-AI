@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Optional
 from fastapi import APIRouter, HTTPException, status, Request
 import structlog
 import json
@@ -11,9 +12,9 @@ logger = structlog.get_logger()
 router = APIRouter(prefix="/reports", tags=["reports"])
 
 
-def get_db_service(request: Request) -> DatabaseService:
+def get_db_service(request: Request) -> Optional[DatabaseService]:
     """Request에서 DB 서비스 가져오기"""
-    return request.app.state.db_service
+    return getattr(request.app.state, "db_service", None)
 
 
 @router.post(
@@ -58,22 +59,27 @@ async def generate_report(
 
         # DB에 저장
         db_service = get_db_service(http_request)
-        if db_service:
-            try:
-                await _save_report_to_db(
-                    db_service=db_service,
-                    request=request,
-                    report_data=report_data,
-                    tokens_used=tokens_used,
-                    generated_at=generated_at
-                )
-                logger.info("report_saved_to_db", trade_cycle_id=request.trade_cycle_id)
-            except Exception as db_error:
-                logger.error(
-                    "report_save_failed",
-                    trade_cycle_id=request.trade_cycle_id,
-                    error=str(db_error)
-                )
+        if not db_service:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="데이터베이스 서비스가 초기화되지 않았습니다."
+            )
+        
+        try:
+            await _save_report_to_db(
+                db_service=db_service,
+                request=request,
+                report_data=report_data,
+                tokens_used=tokens_used,
+                generated_at=generated_at
+            )
+            logger.info("report_saved_to_db", trade_cycle_id=request.trade_cycle_id)
+        except Exception as db_error:
+            logger.error(
+                "report_save_failed",
+                trade_cycle_id=request.trade_cycle_id,
+                error=str(db_error)
+            )
 
         logger.info(
             "report_generation_success",
