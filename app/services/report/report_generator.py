@@ -2,8 +2,8 @@ from datetime import datetime
 import json
 import structlog
 from app.models.request import GenerateReportRequest
-from app.services.openai_service import OpenAIService
-from app.services.technical_analysis_service import TechnicalAnalysisService
+from app.services.external import OpenAIService
+from app.services.report.technical_analysis_service import TechnicalAnalysisService
 
 logger = structlog.get_logger()
 

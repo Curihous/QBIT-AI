@@ -22,8 +22,8 @@ class Settings(BaseSettings):
     # BE 서버 설정
     be_server_url: str = "https://api.qbit.o-r.kr"
     
-    # Polygon API 설정
-    polygon_api_key: str
+    # Massive API 설정
+    massive_api_key: str
     
     # PostgreSQL 설정
     db_host: str
@@ -33,15 +33,19 @@ class Settings(BaseSettings):
     db_password: str
 
     # 서버 설정
-    server_host: str
-    server_port: int
-    server_reload: bool
+    server_host: str = "0.0.0.0"
+    server_port: int = 8000
+    server_reload: bool = False
 
     # CORS 설정
-    allowed_origins: str
+    allowed_origins: str = "http://localhost:8080,https://api.qbit.o-r.kr"
 
     # 로깅 설정
-    log_level: str
+    log_level: str = "DEBUG"
+
+    # 애플리케이션 버전
+    # deploy브랜치로 병합할 때
+    app_version: str = "1.0.0"
 
     @property
     def allowed_origins_list(self) -> list[str]:

@@ -1,0 +1,72 @@
+name: PR Check
+
+on:
+  pull_request:
+    branches: [ deploy ]
+
+env:
+  DOCKER_IMAGE: ${{ secrets.DOCKER_REPO }}
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Cache pip packages
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Run linting
+      run: |
+        pip install flake8
+        flake8 app/ --count --select=E9,F63,F7,F82 --show-source --statistics
+
+    - name: Set up Buildx
+      uses: docker/setup-buildx-action@v3
+      with:
+        install: true
+        driver: docker-container
+
+    - name: Build Docker image (no push)
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./Dockerfile
+        platforms: linux/amd64
+        push: false
+        load: true
+        tags: qbit-ai:pr-${{ github.event.number }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Run security scan
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: qbit-ai:pr-${{ github.event.number }}
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+        severity: 'CRITICAL,HIGH'
+        ignore-unfixed: true
+
+    - name: Upload Trivy scan results
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: trivy-results.sarif
+

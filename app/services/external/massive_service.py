@@ -1,5 +1,5 @@
 """
-Polygon.io API 호출 서비스: Top 3000 유동성 종목 리스트 조회
+Massive.com API 호출 서비스: Top 3000 유동성 종목 리스트 조회
 """
 import asyncio
 import httpx
@@ -11,16 +11,16 @@ from app.config import get_settings
 logger = structlog.get_logger()
 
 
-class PolygonService:
+class MassiveService:
     """
-    Polygon.io API 호출하여 주식 데이터를 가져오는 서비스
+    Massive.com API 호출하여 주식 데이터를 가져오는 서비스
     """
     
     def __init__(self):
         self.settings = get_settings()
         # 모든 엔드포인트는 api.massive.com에서 정상 동작
         self.base_url = "https://api.massive.com"
-        self.api_key = self.settings.polygon_api_key
+        self.api_key = self.settings.massive_api_key
     
     async def get_top_tickers(
         self,
@@ -58,7 +58,7 @@ class PolygonService:
             url = f"{self.base_url}/v3/reference/tickers"
             
             logger.info(
-                "polygon_api_call",
+                "massive_api_call",
                 endpoint="/v3/reference/tickers",
                 limit=limit,
                 cursor=cursor is not None
@@ -70,7 +70,7 @@ class PolygonService:
                 data = response.json()
                 
                 logger.info(
-                    "polygon_api_call_success",
+                    "massive_api_call_success",
                     result_count=len(data.get("results", [])),
                     has_next=bool(data.get("next_url"))
                 )
@@ -80,20 +80,20 @@ class PolygonService:
         except httpx.HTTPStatusError as e:
             error_detail = e.response.text[:500] if e.response.text else "No error detail"
             logger.error(
-                "polygon_api_call_failed",
+                "massive_api_call_failed",
                 status_code=e.response.status_code,
                 response=error_detail,
                 url=url,
                 params=params
             )
-            raise Exception(f"Polygon API 호출 실패: {e.response.status_code} - {error_detail}")
+            raise Exception(f"Massive API 호출 실패: {e.response.status_code} - {error_detail}")
         except Exception as e:
             logger.error(
-                "polygon_api_call_error",
+                "massive_api_call_error",
                 error=str(e),
                 error_type=type(e).__name__
             )
-            raise Exception(f"Polygon API 호출 중 오류: {str(e)}")
+            raise Exception(f"Massive API 호출 중 오류: {str(e)}")
     
 
     async def get_ticker_details(self, ticker: str) -> Optional[Dict[str, Any]]:
@@ -141,7 +141,7 @@ class PolygonService:
         page = 1
         target_collect = 8000  
         
-        logger.info("polygon_starting_ticker_collection", target=target_collect)
+        logger.info("massive_starting_ticker_collection", target=target_collect)
         
         while len(all_tickers) < target_collect:
             limit = min(1000, target_collect - len(all_tickers))
@@ -159,7 +159,7 @@ class PolygonService:
             await asyncio.sleep(0.1)
         
         logger.info(
-            "polygon_ticker_list_collected",
+            "massive_ticker_list_collected",
             total_count=len(all_tickers)
         )
         
@@ -181,7 +181,7 @@ class PolygonService:
                 continue
             
             logger.info(
-                "polygon_market_cap_batch",
+                "massive_market_cap_batch",
                 batch_num=(i // batch_size) + 1,
                 total_batches=(len(all_tickers) + batch_size - 1) // batch_size,
                 current_with_market_cap=len(tickers_with_market_cap),
@@ -220,7 +220,7 @@ class PolygonService:
         )
         
         logger.info(
-            "polygon_top_3000_completed",
+            "massive_top_3000_completed",
             total_collected=len(all_tickers),
             with_market_cap=len(tickers_with_market_cap),
             final_count=min(3000, len(tickers_with_market_cap)),
@@ -264,7 +264,7 @@ class PolygonService:
             to_date = datetime.now()
             from_date = to_date - timedelta(days=days)
             
-            # Polygon API 형식: YYYY-MM-DD
+            # Massive API 형식: YYYY-MM-DD
             from_str = from_date.strftime("%Y-%m-%d")
             to_str = to_date.strftime("%Y-%m-%d")
             

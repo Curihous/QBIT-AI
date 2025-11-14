@@ -11,15 +11,15 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta
 
 from app.config import get_settings
-from app.services.polygon_service import PolygonService
-from app.services.correlation_service import CorrelationService
-from app.services.db_service import DatabaseService
+from app.services.external import MassiveService
+from app.services.analysis import CorrelationService
+from app.services.database import DatabaseService
 from app.services.news.text_processor import TextProcessor
 from app.services.news.article_scraper import ArticleScraper
 from app.services.news.chatgpt_client import ChatGPTClient
 from app.services.news.news_db_repository import NewsColumnRepository
 from app.models.column_schema import Column
-from app.core_stock import CORE_STOCK_ASSETS
+from app.constants import CORE_STOCK_ASSETS
 
 logger = structlog.get_logger()
 
@@ -31,7 +31,7 @@ class NewsColumnService:
     
     def __init__(self):
         self.settings = get_settings()
-        self.polygon_service = PolygonService()
+        self.massive_service = MassiveService()
         self.correlation_service = None
         self.repository = None
         self.text_processor = TextProcessor()
@@ -174,7 +174,7 @@ class NewsColumnService:
         for ticker in tickers:
             try:
                 # 뉴스 검색
-                news_list = await self.polygon_service.get_news(
+                news_list = await self.massive_service.get_news(
                     ticker=ticker,
                     limit=5,
                     published_utc=from_date
@@ -299,7 +299,7 @@ class NewsColumnService:
                     related_ticker = related["ticker"]
                     
                     # 해당 종목의 뉴스 검색
-                    news_list = await self.polygon_service.get_news(
+                    news_list = await self.massive_service.get_news(
                         ticker=related_ticker,
                         limit=3
                     )

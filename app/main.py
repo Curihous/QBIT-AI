@@ -13,9 +13,8 @@ from fastapi import HTTPException
 from app.config import get_settings
 from app.routers import report_router, news_router
 from app.routers.news import init_services as init_news_services
-from app.services.db_service import DatabaseService
-from app.services.liquid_stocks_service import LiquidStocksService
-from app.services.correlation_service import CorrelationService
+from app.services.database import DatabaseService
+from app.services.analysis import LiquidStocksService, CorrelationService
 from app.services.news import NewsColumnService
 
 # 설정 로드
@@ -131,7 +130,7 @@ async def lifespan(app: FastAPI):
     # 시작 시
     logger.info(
         "application_startup",
-        version="1.0.0",
+        version=settings.app_version,
         environment="production"
     )
     
@@ -155,6 +154,10 @@ async def lifespan(app: FastAPI):
         # News 라우터 서비스 초기화
         init_news_services(db_service, liquid_stocks_service, correlation_service, news_column_service, limiter)
         logger.info("news_router_initialized")
+        
+        # 앱 상태에 DB 서비스 저장
+        app.state.db_service = db_service
+        logger.info("db_service_stored_in_app_state")
         
         # 스케줄러 등록
         # 주 1회 (일요일 새벽 3시) Top 3000 업데이트
@@ -213,7 +216,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="QBIT-AI Report Service",
     description="QBIT 주식 모의투자 플랫폼의 AI 분석 서버",
-    version="1.0.0",
+    version=settings.app_version,
     docs_url="/docs",
     redoc_url="/redoc",
     lifespan=lifespan
@@ -293,9 +296,8 @@ app.include_router(news_router)
 @limiter.limit("10/minute")
 async def root(request: Request) -> dict[str, str]:
     return {
-        "service": "QBIT-AI Report Service",
-        "version": "1.0.0",
-        "description": "주식 모의투자 AI 분석 서버",
+        "service": "QBIT-AI Service",
+        "version": settings.app_version,
         "docs": "/docs"
     }
 

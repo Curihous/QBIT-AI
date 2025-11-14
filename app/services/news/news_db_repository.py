@@ -4,7 +4,7 @@
 import json
 import structlog
 from typing import Optional, Dict, Any, List
-from app.services.db_service import DatabaseService
+from app.services.database import DatabaseService
 
 logger = structlog.get_logger()
 
