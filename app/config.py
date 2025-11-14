@@ -33,15 +33,15 @@ class Settings(BaseSettings):
     db_password: str
 
     # 서버 설정
-    server_host: str
-    server_port: int
-    server_reload: bool
+    server_host: str = "0.0.0.0"
+    server_port: int = 8000
+    server_reload: bool = False
 
     # CORS 설정
-    allowed_origins: str
+    allowed_origins: str = "http://localhost:8080,https://api.qbit.o-r.kr"
 
     # 로깅 설정
-    log_level: str
+    log_level: str = "DEBUG"
 
     @property
     def allowed_origins_list(self) -> list[str]:

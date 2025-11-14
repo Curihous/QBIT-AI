@@ -76,11 +76,6 @@ jobs:
             -e DB_NAME="${{ secrets.DB_NAME }}" \
             -e DB_USER="${{ secrets.DB_USER }}" \
             -e DB_PASSWORD="${{ secrets.DB_PASSWORD }}" \
-            -e SERVER_HOST="${{ secrets.SERVER_HOST }}" \
-            -e SERVER_PORT="${{ secrets.SERVER_PORT }}" \
-            -e SERVER_RELOAD="${{ secrets.SERVER_RELOAD }}" \
-            -e ALLOWED_ORIGINS="${{ secrets.ALLOWED_ORIGINS }}" \
-            -e LOG_LEVEL="${{ secrets.LOG_LEVEL }}" \
             ${{ secrets.DOCKER_REPO }}:${{ github.sha }}
 
           # 사용하지 않는 이미지 정리
