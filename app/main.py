@@ -156,6 +156,10 @@ async def lifespan(app: FastAPI):
         init_news_services(db_service, liquid_stocks_service, correlation_service, news_column_service, limiter)
         logger.info("news_router_initialized")
         
+        # 앱 상태에 DB 서비스 저장
+        app.state.db_service = db_service
+        logger.info("db_service_stored_in_app_state")
+        
         # 스케줄러 등록
         # 주 1회 (일요일 새벽 3시) Top 3000 업데이트
         scheduler.add_job(
