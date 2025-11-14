@@ -130,7 +130,7 @@ async def lifespan(app: FastAPI):
     # 시작 시
     logger.info(
         "application_startup",
-        version="1.0.0",
+        version=settings.app_version,
         environment="production"
     )
     
@@ -216,7 +216,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="QBIT-AI Report Service",
     description="QBIT 주식 모의투자 플랫폼의 AI 분석 서버",
-    version="1.0.0",
+    version=settings.app_version,
     docs_url="/docs",
     redoc_url="/redoc",
     lifespan=lifespan
@@ -296,9 +296,8 @@ app.include_router(news_router)
 @limiter.limit("10/minute")
 async def root(request: Request) -> dict[str, str]:
     return {
-        "service": "QBIT-AI Report Service",
-        "version": "1.0.0",
-        "description": "주식 모의투자 AI 분석 서버",
+        "service": "QBIT-AI Service",
+        "version": settings.app_version,
         "docs": "/docs"
     }
 

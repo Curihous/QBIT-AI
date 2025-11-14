@@ -43,6 +43,10 @@ class Settings(BaseSettings):
     # 로깅 설정
     log_level: str = "DEBUG"
 
+    # 애플리케이션 버전
+    # deploy브랜치로 병합할 때
+    app_version: str = "1.0.0"
+
     @property
     def allowed_origins_list(self) -> list[str]:
         return [origin.strip() for origin in self.allowed_origins.split(",")]
