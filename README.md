@@ -1,15 +1,34 @@
 # QBIT-AI
 
-## 로컬 서버 실행
+## 설치 및 실행
 
 ### 1. 환경 변수 설정
 
-### 2. 서버 실행(포트 8000)
+`.env` 파일을 생성하고 필요한 환경 변수를 설정하세요.
+
+### 2. 의존성 설치
+
 ```powershell
-py -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+pip install -r requirements.txt
 ```
 
-### 3. 테스트 실행
+### 3. 서버 실행
+
 ```powershell
-py test_local.py
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+### 4. API 문서
+
+- Swagger UI: http://localhost:8000/docs
+- 배포 서버 정보는 노션에서 확인
+
+## 로컬 테스트
+
+```powershell
+# 리포트 생성 테스트
+python -m tests.test_report
+
+# 뉴스 칼럼 생성 테스트
+python -m tests.test_news
 ```

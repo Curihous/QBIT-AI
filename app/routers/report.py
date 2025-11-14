@@ -4,8 +4,8 @@ import structlog
 import json
 from app.models.request import GenerateReportRequest
 from app.models.response import GenerateReportResponse
-from app.services.report_generator import ReportGenerator
-from app.services.db_service import DatabaseService
+from app.services.report import ReportGenerator
+from app.services.database import DatabaseService
 
 logger = structlog.get_logger()
 router = APIRouter(prefix="/reports", tags=["reports"])

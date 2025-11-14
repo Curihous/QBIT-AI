@@ -13,9 +13,8 @@ from fastapi import HTTPException
 from app.config import get_settings
 from app.routers import report_router, news_router
 from app.routers.news import init_services as init_news_services
-from app.services.db_service import DatabaseService
-from app.services.liquid_stocks_service import LiquidStocksService
-from app.services.correlation_service import CorrelationService
+from app.services.database import DatabaseService
+from app.services.analysis import LiquidStocksService, CorrelationService
 from app.services.news import NewsColumnService
 
 # 설정 로드

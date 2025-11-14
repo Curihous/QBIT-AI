@@ -5,9 +5,9 @@ import asyncio
 import structlog
 import pandas as pd
 from typing import List, Dict, Any
-from app.services.polygon_service import PolygonService
-from app.services.liquid_stocks_service import LiquidStocksService
-from app.services.db_service import DatabaseService
+from app.services.external import MassiveService
+from app.services.analysis.liquid_stocks_service import LiquidStocksService
+from app.services.database import DatabaseService
 
 logger = structlog.get_logger()
 
@@ -15,7 +15,7 @@ logger = structlog.get_logger()
 class CorrelationService:
     
     def __init__(self):
-        self.polygon_service = PolygonService()
+        self.massive_service = MassiveService()
         self.liquid_stocks_service = None
         self.db_service = None
     
@@ -70,7 +70,7 @@ class CorrelationService:
             async def fetch_with_semaphore(ticker: str):
                 async with semaphore:
                     try:
-                        data = await self.polygon_service.get_aggregates(ticker, days=days)
+                        data = await self.massive_service.get_aggregates(ticker, days=days)
                         if data:
                             price_data_dict[ticker] = data
                         else:

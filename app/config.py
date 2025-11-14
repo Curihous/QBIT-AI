@@ -22,8 +22,8 @@ class Settings(BaseSettings):
     # BE 서버 설정
     be_server_url: str = "https://api.qbit.o-r.kr"
     
-    # Polygon API 설정
-    polygon_api_key: str
+    # Massive API 설정
+    massive_api_key: str
     
     # PostgreSQL 설정
     db_host: str
