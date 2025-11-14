@@ -188,12 +188,12 @@ async def lifespan(app: FastAPI):
         logger.info("scheduler_started")
         
     except Exception as e:
-        logger.error(
-            "application_startup_failed",
+        logger.warning(
+            "database_connection_failed",
             error=str(e),
-            error_type=type(e).__name__
+            error_type=type(e).__name__,
+            message="서버는 데이터베이스 없이 시작됩니다. 일부 기능이 제한될 수 있습니다."
         )
-        raise
     
     yield
     

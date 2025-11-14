@@ -1,5 +1,5 @@
 """
-애플리케이션 설정: 환경 변수 관리 (OpenAI, Polygon, PostgreSQL 등)
+애플리케이션 설정: 환경 변수 관리
 """
 from functools import lru_cache
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -21,7 +21,6 @@ class Settings(BaseSettings):
     
     # BE 서버 설정
     be_server_url: str = "https://api.qbit.o-r.kr"
-    be_access_token: str 
     
     # Polygon API 설정
     polygon_api_key: str

@@ -31,6 +31,9 @@ Thumbs.db
 *.log
 logs/
 
+# 로컬 테스트 파일
+test_local.py
+
 build/
 dist/
 *.egg-info/
