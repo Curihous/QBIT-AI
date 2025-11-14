@@ -6,9 +6,8 @@ from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
 import structlog
 import random
-from app.services.db_service import DatabaseService
-from app.services.liquid_stocks_service import LiquidStocksService
-from app.services.correlation_service import CorrelationService
+from app.services.database import DatabaseService
+from app.services.analysis import LiquidStocksService, CorrelationService
 from app.services.news import NewsColumnService
 from slowapi import Limiter
 

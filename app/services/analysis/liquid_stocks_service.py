@@ -1,20 +1,20 @@
 """
-유동성 Top 3000 종목 리스트 관리 서비스: Polygon API에서 가져와 PostgreSQL에 저장
+유동성 Top 3000 종목 리스트 관리 서비스: Massive API에서 가져와 PostgreSQL에 저장
 """
 import structlog
 from typing import List, Dict, Any
-from app.services.polygon_service import PolygonService
-from app.services.db_service import DatabaseService
+from app.services.external import MassiveService
+from app.services.database import DatabaseService
 
 logger = structlog.get_logger()
 
 
 class LiquidStocksService:
-    """유동성 상위 3000개 종목 리스트를 Polygon API에서 가져와서 DB에 저장
+    """유동성 상위 3000개 종목 리스트를 Massive API에서 가져와서 DB에 저장
     """
     
     def __init__(self):
-        self.polygon_service = PolygonService()
+        self.massive_service = MassiveService()
         self.db_service = None
     
     async def initialize(self, db_service: DatabaseService):
@@ -22,18 +22,18 @@ class LiquidStocksService:
         self.db_service = db_service
     
     async def update_liquid_stocks(self) -> int:
-        """Polygon API에서 Top 3000 주식을 가져와서 DB에 업데이트"""
+        """Massive API에서 Top 3000 주식을 가져와서 DB에 업데이트"""
         try:
             logger.info("liquid_stocks_update_started")
             
             # 주식 Top 3000 가져오기
-            stock_tickers = await self.polygon_service.get_top_3000_tickers()
+            stock_tickers = await self.massive_service.get_top_3000_tickers()
             
             if not stock_tickers:
-                logger.warning("liquid_stocks_no_data_from_polygon")
+                logger.warning("liquid_stocks_no_data_from_massive")
                 return 0
             
-            logger.info("liquid_stocks_fetched_from_polygon", stock_count=len(stock_tickers))
+            logger.info("liquid_stocks_fetched_from_massive", stock_count=len(stock_tickers))
             
             # DB에 저장
             updated_count = await self._save_to_db(stock_tickers)

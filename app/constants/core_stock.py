@@ -176,3 +176,4 @@ CORE_STOCK_ASSETS = [
     "XEL",   # Xcel Energy
     "ZS"     # Zscaler
 ]
+

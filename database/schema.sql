@@ -35,3 +35,27 @@ CREATE TABLE IF NOT EXISTS news_columns (
 );
 CREATE INDEX IF NOT EXISTS idx_news_columns_created_at ON news_columns(created_at DESC);
 
+
+-- 매매 분석 리포트 테이블
+CREATE TABLE IF NOT EXISTS reports (
+    trade_cycle_id INTEGER PRIMARY KEY,  -- 매매 사이클 ID
+    symbol VARCHAR(20) NOT NULL,  -- 종목 심볼
+    start_date TIMESTAMP NOT NULL,  -- 매매 시작 일시
+    end_date TIMESTAMP NOT NULL,  -- 매매 종료 일시
+    profit_loss_rate DECIMAL(10, 4) NOT NULL,  -- 손익률 (%)
+    average_buy_price DECIMAL(15, 4) NOT NULL,  -- 평균 매수 가격
+    average_sell_price DECIMAL(15, 4) NOT NULL,  -- 평균 매도 가격
+    total_investment_amount DECIMAL(15, 4) NOT NULL,  -- 총 투자 금액
+    overall_evaluation TEXT NOT NULL,  -- 전체 매매 평가
+    buy_analysis JSONB NOT NULL,  -- 매수 시점 상세 분석
+    buy_evaluation TEXT NOT NULL,  -- 매수 시점 종합 평가
+    buy_improvement TEXT NOT NULL,  -- 매수 시점 개선점
+    sell_analysis JSONB NOT NULL,  -- 매도 시점 상세 분석
+    sell_evaluation TEXT NOT NULL,  -- 매도 시점 종합 평가
+    sell_improvement TEXT NOT NULL,  -- 매도 시점 개선점
+    tokens_used INTEGER NOT NULL DEFAULT 0,  -- OpenAI API 사용 토큰 수
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_reports_symbol ON reports(symbol);
+CREATE INDEX IF NOT EXISTS idx_reports_created_at ON reports(created_at DESC);
