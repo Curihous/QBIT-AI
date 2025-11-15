@@ -1,6 +1,3 @@
-"""
-애플리케이션 설정: 환경 변수 관리
-"""
 from functools import lru_cache
 from pydantic_settings import BaseSettings, SettingsConfigDict
 

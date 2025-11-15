@@ -310,6 +310,12 @@ async def _fetch_trade_cycle_request(
     trade_cycle_id: int
 ) -> GenerateReportRequest:
     url = f"{settings.be_server_url}/trade-cycles/{trade_cycle_id}"
+    logger.info(
+        "fetching_trade_cycle_from_be",
+        url=url,
+        trade_cycle_id=trade_cycle_id,
+        be_server_url=settings.be_server_url
+    )
     async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             response = await client.get(url)
