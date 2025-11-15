@@ -82,13 +82,27 @@ class TechnicalAnalysisService:
             logger.warning("moving_average_calculation_failed", error=str(e))
         
         # 4. Bollinger Bands (length=20, std=2 기본값)
+        # pandas-ta 0.4.0 stable 버전 사용: Python 3.13 지원, 컬럼명 안정적
         try:
             if len(df) >= 20:
                 bbands = ta.bbands(df['close'], length=20, std=2)
                 if bbands is not None and not bbands.empty:
-                    df['bb_upper'] = bbands['BBU_20_2.0']
-                    df['bb_middle'] = bbands['BBM_20_2.0']
-                    df['bb_lower'] = bbands['BBL_20_2.0']
+                    try:
+                        df['bb_upper'] = bbands['BBU_20_2.0']
+                        df['bb_middle'] = bbands['BBM_20_2.0']
+                        df['bb_lower'] = bbands['BBL_20_2.0']
+                    except KeyError:
+                        # 컬럼명이 다를 경우 동적 찾기 (fallback)
+                        bb_columns = bbands.columns.tolist()
+                        upper_col = next((c for c in bb_columns if c.startswith("BBU_")), None)
+                        middle_col = next((c for c in bb_columns if c.startswith("BBM_")), None)
+                        lower_col = next((c for c in bb_columns if c.startswith("BBL_")), None)
+                        if upper_col and middle_col and lower_col:
+                            df['bb_upper'] = bbands[upper_col]
+                            df['bb_middle'] = bbands[middle_col]
+                            df['bb_lower'] = bbands[lower_col]
+                        else:
+                            logger.warning("bollinger_bands_columns_not_found", available_columns=bb_columns)
         except Exception as e:
             logger.warning("bollinger_bands_calculation_failed", error=str(e))
         
