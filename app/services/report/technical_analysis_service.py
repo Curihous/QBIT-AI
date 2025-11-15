@@ -67,12 +67,12 @@ class TechnicalAnalysisService:
         df['ema_12'] = ta.ema(df['close'], length=12)
         df['ema_26'] = ta.ema(df['close'], length=26)
         
-        # 4. Bollinger Bands
-        bbands = ta.bbands(df['close'], length=20)
+        # 4. Bollinger Bands (length=20, std=2 기본값)
+        bbands = ta.bbands(df['close'], length=20, std=2)
         if bbands is not None and not bbands.empty:
-            df['bb_upper'] = bbands['BBU_20_2.0']
-            df['bb_middle'] = bbands['BBM_20_2.0']
-            df['bb_lower'] = bbands['BBL_20_2.0']
+            df['bb_upper'] = bbands['BBU_20_2']
+            df['bb_middle'] = bbands['BBM_20_2']
+            df['bb_lower'] = bbands['BBL_20_2']
         
         # 5. Stochastic
         stoch = ta.stoch(df['high'], df['low'], df['close'])
