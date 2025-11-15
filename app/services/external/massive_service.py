@@ -1,6 +1,3 @@
-"""
-Massive.com API 호출 서비스: Top 3000 유동성 종목 리스트 조회
-"""
 import asyncio
 import httpx
 import structlog
@@ -8,20 +5,18 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta
 from app.config import get_settings
 
+# Massive.com API 호출 서비스: Top 3000 유동성 종목 리스트 조회
 logger = structlog.get_logger()
 
 
 class MassiveService:
-    """
-    Massive.com API 호출하여 주식 데이터를 가져오는 서비스
-    """
-    
     def __init__(self):
         self.settings = get_settings()
         # 모든 엔드포인트는 api.massive.com에서 정상 동작
         self.base_url = "https://api.massive.com"
         self.api_key = self.settings.massive_api_key
     
+    # Top 티커 리스트 조회
     async def get_top_tickers(
         self,
         limit: int = 1000,
@@ -29,21 +24,6 @@ class MassiveService:
         active: bool = True,
         cursor: Optional[str] = None
     ) -> Dict[str, Any]:
-        """
-        Top 티커 리스트 조회: 티커 심볼 반환용 
-        
-        Args:
-            limit: 한 번에 가져올 최대 개수 (최대 1000)
-            market: 시장 유형
-            active: 활성 종목만
-            cursor: 페이지네이션 커서 (다음 페이지 조회용)
-        
-        Returns:
-            {
-                "results": [...],
-                "next_url": "..." or None
-            }
-        """
         try:
             params = {
                 "apiKey": self.api_key,
@@ -96,10 +76,8 @@ class MassiveService:
             raise Exception(f"Massive API 호출 중 오류: {str(e)}")
     
 
+    # 개별 티커의 상세 정보 조회 (심볼 이용해 market_cap 등 반환)
     async def get_ticker_details(self, ticker: str) -> Optional[Dict[str, Any]]:
-        """
-        개별 티커의 상세 정보 조회 (심볼 이용해 market_cap 등 반환)
-        """
         try:
             url = f"{self.base_url}/v3/reference/tickers/{ticker}"
             params = {"apiKey": self.api_key}
@@ -129,10 +107,8 @@ class MassiveService:
             )
             return None
     
+    # 시가총액 기준 상위 3000개 티커 조회
     async def get_top_3000_tickers(self) -> List[Dict[str, Any]]:
-        """
-        시가총액 기준 상위 3000개 티커 조회
-        """
         import asyncio
         
         # 1. 티커 목록 수집: 8000개 (market_cap 비율 고려, 3000개 확보 목표)
@@ -230,6 +206,7 @@ class MassiveService:
         # 4. 상위 3000개 반환
         return tickers_with_market_cap[:3000]  
     
+    # 티커의 과거 가격 데이터 조회 (Aggregates API)
     async def get_aggregates(
         self,
         ticker: str,
@@ -237,28 +214,6 @@ class MassiveService:
         multiplier: int = 1,
         timespan: str = "day"
     ) -> Optional[List[Dict[str, Any]]]:
-        """
-        티커의 과거 가격 데이터 조회 (Aggregates API)
-        
-        Args:
-            ticker: 티커 심볼 (예: "AAPL")
-            days: 조회할 일수 (기본값: 90일)
-            multiplier: 시간 단위 배수 (기본값: 1)
-            timespan: 시간 단위 ("day", "hour", "minute" 등. 기본값: "day")
-        
-        Returns:
-            일봉 데이터 리스트: [
-                {
-                    "timestamp": 1696118400000,  # Unix timestamp (ms)
-                    "date": "2023-10-01",        # 날짜 문자열
-                    "close": 175.43,             # 종가
-                    "volume": 50000000,          # 거래량
-                    ...
-                },
-                ...
-            ]
-            실패 시 None
-        """
         try:
             # 날짜 계산: 오늘부터 days일 전까지
             to_date = datetime.now()
@@ -347,6 +302,7 @@ class MassiveService:
             )
             return None
     
+    # News API로 특정 종목의 뉴스 조회
     async def get_news(
         self,
         ticker: str,
@@ -355,32 +311,6 @@ class MassiveService:
         order: str = "desc",
         sort: str = "published_utc"
     ) -> Optional[List[Dict[str, Any]]]:
-        """
-        News API로 특정 종목의 뉴스 조회
-        
-        Args:
-            ticker: 티커 심볼
-            limit: 반환할 최대 개수 (기본값: 10, 최대: 1000)
-            published_utc: 날짜 필터 (YYYY-MM-DD 형식)
-            order: 정렬 순서 ("asc" 또는 "desc", 기본값: "desc")
-            sort: 정렬 필드 (기본값: "published_utc")
-        
-        Returns:
-            뉴스 기사 리스트: [
-                {
-                    "id": "...",
-                    "title": "...",
-                    "description": "...",
-                    "article_url": "...",
-                    "image_url": "...",
-                    "published_utc": "...",
-                    "tickers": ["AAPL", ...],
-                    ...
-                },
-                ...
-            ]
-            실패 시 None
-        """
         try:
             url = f"{self.base_url}/v2/reference/news"
             
@@ -448,10 +378,104 @@ class MassiveService:
             )
             return None
     
+    # 리포트용 뉴스 조회: 특정 기간(start_date ~ end_date)의 종목 뉴스 조회
+    async def get_news_by_date_range(
+        self,
+        ticker: str,
+        start_date: datetime,
+        end_date: datetime,
+        limit: int = 100,
+        order: str = "desc",
+        sort: str = "published_utc"
+    ) -> Optional[List[Dict[str, Any]]]:
+        try:
+            url = f"{self.base_url}/v2/reference/news"
+            
+            # 날짜를 YYYY-MM-DD 형식으로 변환
+            start_date_str = start_date.strftime("%Y-%m-%d")
+            end_date_str = end_date.strftime("%Y-%m-%d")
+            
+            params = {
+                "ticker": ticker.upper(),
+                "limit": min(limit, 1000),
+                "order": order,
+                "sort": sort,
+                "published_utc.gte": start_date_str,  # 시작 날짜 이후
+                "published_utc.lte": end_date_str      # 종료 날짜 이전
+            }
+            
+            # API 키는 헤더에 포함
+            headers = {
+                "Authorization": f"Bearer {self.api_key}"
+            }
+            
+            logger.info(
+                "news_by_date_range_request",
+                ticker=ticker,
+                start_date=start_date_str,
+                end_date=end_date_str,
+                limit=limit
+            )
+            
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.get(url, params=params, headers=headers)
+                
+                if response.status_code == 429:
+                    logger.warning(
+                        "news_by_date_range_rate_limit",
+                        ticker=ticker,
+                        start_date=start_date_str,
+                        end_date=end_date_str,
+                        message="Rate limit exceeded, skipping"
+                    )
+                    return None
+                
+                response.raise_for_status()
+                data = response.json()
+                
+                results = data.get("results", [])
+                if not results:
+                    logger.debug(
+                        "news_by_date_range_no_data",
+                        ticker=ticker,
+                        start_date=start_date_str,
+                        end_date=end_date_str
+                    )
+                    return []
+                
+                logger.info(
+                    "news_by_date_range_fetched",
+                    ticker=ticker,
+                    start_date=start_date_str,
+                    end_date=end_date_str,
+                    count=len(results)
+                )
+                
+                return results
+                
+        except httpx.HTTPStatusError as e:
+            logger.warning(
+                "news_by_date_range_api_failed",
+                ticker=ticker,
+                start_date=start_date.strftime("%Y-%m-%d") if isinstance(start_date, datetime) else str(start_date),
+                end_date=end_date.strftime("%Y-%m-%d") if isinstance(end_date, datetime) else str(end_date),
+                status_code=e.response.status_code,
+                response=e.response.text[:200] if e.response.text else ""
+            )
+            return None
+        except Exception as e:
+            logger.warning(
+                "news_by_date_range_api_error",
+                ticker=ticker,
+                start_date=start_date.strftime("%Y-%m-%d") if isinstance(start_date, datetime) else str(start_date),
+                end_date=end_date.strftime("%Y-%m-%d") if isinstance(end_date, datetime) else str(end_date),
+                error=str(e),
+                error_type=type(e).__name__
+            )
+            return None
+    
+    # next_url에서 cursor 파라미터 추출
     def _extract_cursor_from_url(self, url: str) -> Optional[str]:
-        """
-        next_url에서 cursor 파라미터 추출
-        """
         try:
             from urllib.parse import urlparse, parse_qs
             parsed = urlparse(url)

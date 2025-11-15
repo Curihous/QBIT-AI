@@ -1,6 +1,4 @@
-"""
-뉴스 칼럼 API 라우터
-"""
+# 뉴스 칼럼 API 라우터
 from typing import Any, Optional, List
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
@@ -16,7 +14,11 @@ logger = structlog.get_logger()
 
 # Request 모델
 class PortfolioRequest(BaseModel):
-    """포트폴리오 종목 리스트"""
+    """
+    포트폴리오 종목 리스트
+    
+    사용자가 보유한 상위 종목 리스트를 담는 요청 모델입니다.
+    """
     tickers: List[str]  # 상위 3개 종목 (예: ["AAPL", "TSLA", "NVDA"])
 
 
@@ -38,7 +40,7 @@ def init_services(
     news_column: NewsColumnService,
     rate_limiter: Limiter
 ):
-    """서비스 초기화 (main.py에서 호출)"""
+    # 서비스 초기화 (main.py에서 호출)
     global db_service, liquid_stocks_service, correlation_service, news_column_service, limiter
     db_service = db
     liquid_stocks_service = liquid_stocks
@@ -169,7 +171,19 @@ async def get_all_columns(limit: int = 50) -> dict[str, Any]:
     description="특정 종목의 상관종목을 조회합니다.",
 )
 async def get_related_tickers(ticker: str, limit: int = 20) -> dict[str, Any]:
-    """상관종목 조회"""
+    """
+    상관종목 조회
+    
+    특정 종목과 가격 상관관계가 높은 종목들을 조회합니다.
+    상관계수 기준으로 정렬되어 반환됩니다.
+    
+    Args:
+        ticker: 조회할 종목 심볼 (예: AAPL)
+        limit: 반환할 최대 개수 (기본값: 20)
+    
+    Returns:
+        상관종목 리스트 (ticker, correlation, updated_at 포함)
+    """
     try:
         if not correlation_service:
             raise Exception("상관계수 서비스가 초기화되지 않았습니다.")
@@ -199,7 +213,18 @@ async def get_related_tickers(ticker: str, limit: int = 20) -> dict[str, Any]:
     description="특정 종목이 유동성 Top 3000에 포함되는지 확인합니다.",
 )
 async def check_liquid_stock(ticker: str) -> dict[str, Any]:
-    """유동성 종목 확인"""
+    """
+    유동성 종목 확인
+    
+    특정 종목이 유동성 Top 3000에 포함되는지 확인합니다.
+    시가총액 기준 상위 3000개 종목 리스트를 기준으로 합니다.
+    
+    Args:
+        ticker: 확인할 종목 심볼 (예: AAPL)
+    
+    Returns:
+        유동성 종목 여부 및 상세 정보 (ticker, name, market_cap, updated_at)
+    """
     try:
         query = """
             SELECT ticker, name, market_cap, updated_at

@@ -24,6 +24,7 @@ class GenerateReportRequest(BaseModel):
     symbol: str = Field(..., description="종목 심볼 (예: AAPL, TSLA)", min_length=1, max_length=10)
     start_date: datetime = Field(..., alias="startDate", description="매매 시작 일시")
     end_date: datetime = Field(..., alias="endDate", description="매매 종료 일시")
+    interval: str = Field(..., description="차트 해상도 (예: 1m, 5m, 15m, 30m, 1h, 2h, 1d)")
     profit_loss_rate: float = Field(..., alias="profitLossRate", description="손익률 (%)")
     average_buy_price: float = Field(..., alias="averageBuyPrice", description="평균 매수 가격", gt=0)
     average_sell_price: float = Field(..., alias="averageSellPrice", description="평균 매도 가격", gt=0)

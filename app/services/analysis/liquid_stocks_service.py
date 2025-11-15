@@ -1,28 +1,23 @@
-"""
-유동성 Top 3000 종목 리스트 관리 서비스: Massive API에서 가져와 PostgreSQL에 저장
-"""
 import structlog
 from typing import List, Dict, Any
 from app.services.external import MassiveService
 from app.services.database import DatabaseService
 
+# 유동성 Top 3000 종목 리스트 관리 서비스: Massive API에서 가져와 PostgreSQL에 저장
 logger = structlog.get_logger()
 
-
 class LiquidStocksService:
-    """유동성 상위 3000개 종목 리스트를 Massive API에서 가져와서 DB에 저장
-    """
     
     def __init__(self):
         self.massive_service = MassiveService()
         self.db_service = None
     
+    # DB 서비스 초기화
     async def initialize(self, db_service: DatabaseService):
-        """DB 서비스 초기화"""
         self.db_service = db_service
     
+    # Massive API에서 Top 3000 주식을 가져와서 DB에 업데이트
     async def update_liquid_stocks(self) -> int:
-        """Massive API에서 Top 3000 주식을 가져와서 DB에 업데이트"""
         try:
             logger.info("liquid_stocks_update_started")
             
@@ -54,8 +49,8 @@ class LiquidStocksService:
             )
             raise
     
+    # 티커 리스트를 DB에 저장 (UPSERT) 및 오래된 데이터 삭제
     async def _save_to_db(self, tickers: List[Dict[str, Any]]) -> int:
-        """티커 리스트를 DB에 저장 (UPSERT) 및 오래된 데이터 삭제"""
         if not self.db_service:
             raise Exception("DB 서비스가 초기화되지 않았습니다.")
         
@@ -112,8 +107,8 @@ class LiquidStocksService:
         
         return updated_count
     
+    # DB에 저장된 티커 개수 조회
     async def get_ticker_count(self) -> int:
-        """DB에 저장된 티커 개수 조회"""
         if not self.db_service:
             raise Exception("DB 서비스가 초기화되지 않았습니다.")
         
@@ -121,9 +116,8 @@ class LiquidStocksService:
         count = await self.db_service.fetchval(query)
         return count or 0
     
-    # 모든 티커 리스트 조회: 시가총액 내림차순 정렬 후 티커 문자열 리스트 반환
+    # DB에 저장된 모든 티커 리스트 조회 (시가총액 내림차순)
     async def get_all_tickers(self) -> List[str]:
-        """DB에 저장된 모든 티커 리스트 조회"""
         if not self.db_service:
             raise Exception("DB 서비스가 초기화되지 않았습니다.")
         

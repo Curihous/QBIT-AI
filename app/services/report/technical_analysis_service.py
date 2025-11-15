@@ -8,6 +8,7 @@ logger = structlog.get_logger()
 
 class TechnicalAnalysisService:
 
+    # 기술적 지표 계산 (매수/매도 시점 분석)
     def calculate_indicators(
         self,
         candle_data: list[dict],
@@ -46,8 +47,8 @@ class TechnicalAnalysisService:
             logger.error("technical_analysis_error", error=str(e), error_type=type(e).__name__)
             return self._get_default_analysis()
 
+    # 모든 기술적 지표 계산
     def _calculate_all_indicators(self, df: pd.DataFrame) -> pd.DataFrame:
-        """모든 기술적 지표 계산"""
         
         # 1. RSI (14)
         df['rsi_14'] = ta.rsi(df['close'], length=14)
@@ -98,6 +99,7 @@ class TechnicalAnalysisService:
         
         return df
 
+    # 매수/매도 시점의 기술적 지표 분석
     def _analyze_trade_point(
         self,
         df: pd.DataFrame,
@@ -166,12 +168,14 @@ class TechnicalAnalysisService:
 
         return all_indicators
 
+    # 빈 분석 결과 반환
     def _get_empty_point_analysis(self) -> dict[str, any]:
         return {
             "date": "N/A",
             "close_price": 0
         }
 
+    # 기본 분석 결과 반환 (에러 시)
     def _get_default_analysis(self) -> dict[str, any]:
         default = self._get_empty_point_analysis()
         return {
