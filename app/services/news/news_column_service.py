@@ -1,10 +1,3 @@
-"""
-AI 칼럼 생성 서비스: 핵심 종목별 뉴스 칼럼 생성
-- Pass 1: 직접 뉴스 검색
-- Pass 2: 상관 종목의 간접 뉴스 검색
-- 크롤링 → TextRank 요약 → ChatGPT 칼럼 생성
-"""
-
 import asyncio
 import structlog
 from typing import Optional, List, Dict, Any
@@ -21,13 +14,11 @@ from app.services.news.news_db_repository import NewsColumnRepository
 from app.models.column_schema import Column
 from app.constants import CORE_STOCK_ASSETS
 
+# AI 칼럼 생성 서비스: 핵심 종목별 뉴스 칼럼 생성
 logger = structlog.get_logger()
 
 
 class NewsColumnService:
-    """
-    핵심 종목별 AI 칼럼 생성 서비스
-    """
     
     def __init__(self):
         self.settings = get_settings()
@@ -38,27 +29,13 @@ class NewsColumnService:
         self.article_scraper = ArticleScraper()
         self.chatgpt_client = ChatGPTClient()
     
+    # 서비스 초기화
     async def initialize(self, correlation_service: CorrelationService, db_service: DatabaseService):
-        """서비스 초기화"""
         self.correlation_service = correlation_service
         self.repository = NewsColumnRepository(db_service)
     
+    # 핵심 종목(169개)에 대해 AI 칼럼 생성
     async def generate_all_columns(self, limit: Optional[int] = None) -> Dict[str, Any]:
-        """
-        핵심 종목(169개)에 대해 AI 칼럼 생성
-        
-        Args:
-            limit: 처리할 최대 종목 수 (None이면 전체)
-        
-        Returns:
-            {
-                "success": True,
-                "total_tickers": 169,
-                "pass1_success": 100,
-                "pass2_success": 30,
-                "failed": 20
-            }
-        """
         try:
             # CORE_STOCK_ASSETS (169개) 대상으로 칼럼 생성
             target_tickers = CORE_STOCK_ASSETS.copy()
@@ -105,18 +82,12 @@ class NewsColumnService:
             )
             raise
     
+    # 특정 종목 리스트에 대해 AI 칼럼 생성
     async def generate_columns_for_tickers(
         self,
         tickers: List[str],
         limit: Optional[int] = None
     ) -> Dict[str, Any]:
-        """
-        특정 종목 리스트에 대해 AI 칼럼 생성
-        
-        Args:
-            tickers: 처리할 티커 리스트
-            limit: 처리할 최대 종목 수 (None이면 전체)
-        """
         if not tickers:
             return {
                 "success": False,
@@ -156,14 +127,8 @@ class NewsColumnService:
             "results": all_results
         }
     
+    # Pass 1: 직접 뉴스 검색 (Massive.com News API)
     async def _pass1_direct_news(self, tickers: List[str]) -> Dict[str, Any]:
-        """
-        Pass 1: 직접 뉴스 검색
-        각 종목에 대해 Massive.com News API로 직접 뉴스 검색
-        
-        Args:
-            tickers: 처리할 티커 리스트
-        """
         success_count = 0
         failed_tickers = []
         success_results = []
@@ -266,11 +231,8 @@ class NewsColumnService:
             "success_results": success_results
         }
     
+    # Pass 2: 간접 뉴스 검색 (상관 종목의 뉴스 사용)
     async def _pass2_indirect_news(self, failed_tickers: List[str]) -> Dict[str, Any]:
-        """
-        Pass 2: 간접 뉴스 검색
-        상관 종목의 뉴스를 사용하여 칼럼 생성
-        """
         if not failed_tickers:
             return {"success_count": 0, "failed_tickers": [], "success_results": []}
         
@@ -352,28 +314,13 @@ class NewsColumnService:
             "success_results": success_results
         }
     
+    # 뉴스 기사로부터 AI 칼럼 생성
     async def _generate_column_from_news(
         self,
         ticker: str,
         news_article: Dict[str, Any],
         source_ticker: str
     ) -> Optional[Dict[str, Any]]:
-        """
-        뉴스 기사로부터 AI 칼럼 생성
-        
-        Args:
-            ticker: 칼럼을 생성할 종목
-            news_article: 뉴스 기사 데이터
-            source_ticker: 실제 뉴스가 나온 종목
-        
-        Returns:
-            {
-                "content": "...",
-                "image_url": "...",
-                "source_url": "...",
-                "source_ticker": "..."
-            }
-        """
         try:
             article_url = news_article.get("article_url")
             image_url = news_article.get("image_url")

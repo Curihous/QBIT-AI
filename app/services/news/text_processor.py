@@ -1,29 +1,15 @@
-"""
-텍스트 처리 서비스: 기사 텍스트 정제 및 TextRank 요약
-"""
-
 import re
 import structlog
 from summa import summarizer
 
+# 텍스트 처리 서비스: 기사 텍스트 정제 및 TextRank 요약
 logger = structlog.get_logger()
 
 
 class TextProcessor:
-    """
-    기사 텍스트 전처리 및 요약 서비스
-    """
     
     @staticmethod
     def clean_article_text(text: str) -> str:
-        """
-        기사 텍스트에서 메타 정보 제거
-        
-        Args:
-            text: 원본 텍스트
-        Returns:
-            정제된 텍스트
-        """
         # 제거할 패턴들
         patterns_to_remove = [
             r'Read More:.*?(?=\n|$)',
@@ -46,16 +32,6 @@ class TextProcessor:
     
     @staticmethod
     def extract_key_sentences(text: str, ratio: float = 0.35) -> str:
-        """
-        TextRank로 핵심 문장 추출
-        
-        Args:
-            text: 원본 텍스트
-            ratio: 추출 비율 (0.0 ~ 1.0, 기본값: 0.35)
-        
-        Returns:
-            핵심 문장들
-        """
         try:
             if not text or len(text) < 100:
                 return text

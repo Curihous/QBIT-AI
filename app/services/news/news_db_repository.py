@@ -1,32 +1,18 @@
-"""
-뉴스 칼럼 DB Repository: 칼럼 데이터 저장/조회
-"""
 import json
 import structlog
 from typing import Optional, Dict, Any, List
 from app.services.database import DatabaseService
 
+# 뉴스 칼럼 DB Repository: 칼럼 데이터 저장/조회
 logger = structlog.get_logger()
 
-
 class NewsColumnRepository:
-    """
-    뉴스 칼럼 DB 저장/조회 Repository
-    """
     
     def __init__(self, db_service: DatabaseService):
         self.db_service = db_service
     
+    # 생성된 칼럼을 DB에 저장 (UPSERT)
     async def save_column(self, column_data: Dict[str, Any]) -> bool:
-        """
-        생성된 칼럼을 DB에 저장 (UPSERT)
-        
-        Args:
-            column_data: 칼럼 데이터 (ticker, title, subtitle, sections 등)
-        
-        Returns:
-            성공 여부
-        """
         try:
             # Column 스키마에서 필요한 필드만 추출
             ticker = column_data.get("ticker")
@@ -84,16 +70,8 @@ class NewsColumnRepository:
             )
             return False
     
+    # 특정 종목의 칼럼 조회
     async def get_column(self, ticker: str) -> Optional[Dict[str, Any]]:
-        """
-        특정 종목의 칼럼 조회
-        
-        Args:
-            ticker: 종목 심볼
-        
-        Returns:
-            칼럼 데이터 또는 None
-        """
         try:
             query = """
                 SELECT ticker, content, image_url, source_url, source_ticker, 
@@ -130,16 +108,8 @@ class NewsColumnRepository:
             )
             return None
     
+    # 전체 칼럼 조회
     async def get_all_columns(self, limit: int = 169) -> List[Dict[str, Any]]:
-        """
-        전체 칼럼 조회
-        
-        Args:
-            limit: 조회할 최대 개수
-        
-        Returns:
-            칼럼 데이터 리스트
-        """
         try:
             query = """
                 SELECT ticker, content, image_url, source_url, source_ticker,
@@ -172,16 +142,8 @@ class NewsColumnRepository:
             logger.error("get_all_columns_failed", error=str(e))
             return []
     
+    # 특정 종목의 칼럼 삭제
     async def delete_column(self, ticker: str) -> bool:
-        """
-        특정 종목의 칼럼 삭제
-        
-        Args:
-            ticker: 종목 심볼
-        
-        Returns:
-            성공 여부
-        """
         try:
             query = "DELETE FROM news_columns WHERE ticker = $1"
             await self.db_service.execute(query, ticker.upper())

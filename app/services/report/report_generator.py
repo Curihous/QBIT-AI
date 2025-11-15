@@ -14,6 +14,7 @@ class ReportGenerator:
         self.openai_service = OpenAIService()
         self.technical_service = TechnicalAnalysisService()
 
+    # 매매 분석 리포트 생성
     async def generate_report(
         self,
         request: GenerateReportRequest
@@ -72,11 +73,13 @@ class ReportGenerator:
             )
             raise
 
+    # 시스템 프롬프트 생성
     def _create_system_prompt(self) -> str:
         return """당신은 주식 투자 교육 전문가입니다. 초보 투자자의 모의투자 매매를 분석하여 학습 중심의 피드백을 제공합니다. 
 긍정적이고 건설적인 톤을 사용하고, 매매 타이밍, 리스크 관리 등 구체적인 개선 방안을 제시합니다. 
 모든 리포트는 한국어로 작성되며, 반드시 JSON 형식으로 응답해야 합니다."""
 
+    # 사용자 프롬프트 생성
     def _create_user_prompt(
         self,
         request: GenerateReportRequest,
@@ -139,8 +142,8 @@ buyAnalysis와 sellAnalysis 작성 지침:
 
         return prompt
 
+    # 모든 기술적 지표 포맷팅
     def _format_all_indicators(self, analysis: dict) -> str:
-        """모든 기술적 지표 포맷팅"""
         lines = []
         
         # 기본 정보
@@ -198,6 +201,7 @@ buyAnalysis와 sellAnalysis 작성 지침:
         
         return "\n".join(lines) if lines else "데이터 부족"
 
+    # 체결 내역 포맷팅
     def _format_trade_points(self, trade_points: list) -> str:
         if not trade_points:
             return "체결 내역 없음"

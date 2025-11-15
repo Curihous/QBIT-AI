@@ -34,6 +34,22 @@ async def generate_report(
     request: GenerateReportRequest,
     http_request: Request
 ) -> GenerateReportResponse:
+    """
+    매매 분석 리포트 생성
+    
+    종료된 매매 사이클에 대해 GPT-4 기반 매매 분석 리포트를 생성하고 DB에 저장합니다.
+    기술적 지표 분석과 OpenAI를 활용하여 매수/매도 타이밍에 대한 상세한 분석을 제공합니다.
+    
+    Args:
+        request: 매매 사이클 정보 (tradeCycleId, symbol, startDate, endDate, interval, chartData, tradePoints 등)
+        http_request: HTTP 요청 객체 (DB 서비스 접근용)
+    
+    Returns:
+        GenerateReportResponse: 생성된 리포트 데이터 (overallEvaluation, buyAnalysis, sellAnalysis 등)
+    
+    Raises:
+        HTTPException: DB 서비스 미초기화 또는 리포트 생성 실패 시
+    """
     db_service = get_db_service(http_request)
     if not db_service:
         raise HTTPException(
@@ -59,6 +75,22 @@ async def get_report(
     trade_cycle_id: int,
     request: Request
 ) -> GenerateReportResponse:
+    """
+    매매 분석 리포트 조회
+    
+    tradeCycleId로 저장된 매매 분석 리포트를 조회합니다.
+    리포트가 없으면 자동으로 생성하여 반환합니다.
+    
+    Args:
+        trade_cycle_id: 매매 사이클 ID
+        request: HTTP 요청 객체 (DB 서비스 접근용)
+    
+    Returns:
+        GenerateReportResponse: 조회된 리포트 데이터
+    
+    Raises:
+        HTTPException: DB 서비스 미초기화 또는 리포트 조회/생성 실패 시
+    """
     try:
         db_service = get_db_service(request)
         if not db_service:
