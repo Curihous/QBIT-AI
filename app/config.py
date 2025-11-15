@@ -1,4 +1,5 @@
 from functools import lru_cache
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # 환경 변수 등 설정
@@ -15,9 +16,6 @@ class Settings(BaseSettings):
     openai_model: str
     openai_max_tokens: int 
     openai_temperature: float
-    
-    # BE 서버 설정
-    be_server_url: str = "https://api.qbit.o-r.kr"
     
     # Massive API 설정
     massive_api_key: str
@@ -42,7 +40,7 @@ class Settings(BaseSettings):
 
     # 애플리케이션 버전
     # deploy브랜치로 병합할 때
-    app_version: str = "1.1.0"
+    app_version: str = "1.1.1"
 
     @property
     def allowed_origins_list(self) -> list[str]:
