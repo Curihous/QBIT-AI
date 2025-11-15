@@ -82,7 +82,6 @@ class TechnicalAnalysisService:
             logger.warning("moving_average_calculation_failed", error=str(e))
         
         # 4. Bollinger Bands (length=20, std=2 기본값)
-        # pandas-ta 0.4.0 stable 버전 사용: Python 3.13 지원, 컬럼명 안정적
         try:
             if len(df) >= 20:
                 bbands = ta.bbands(df['close'], length=20, std=2)
