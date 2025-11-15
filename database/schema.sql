@@ -47,13 +47,14 @@ CREATE TABLE IF NOT EXISTS reports (
     average_buy_price DECIMAL(15, 4),  -- 평균 매수 가격
     average_sell_price DECIMAL(15, 4),  -- 평균 매도 가격
     total_investment_amount DECIMAL(15, 4),  -- 총 투자 금액
-    overall_evaluation TEXT,  -- 전체 매매 평가
+    overall_evaluation TEXT,  -- 전체 매매 평가 (리스크 관리, 보유 기간 분석, 성과 평가 지표 포함)
+    market_context TEXT,  -- 보유기간 시장 동향
     buy_analysis JSONB,  -- 매수 시점 상세 분석
     buy_evaluation TEXT,  -- 매수 시점 종합 평가
-    buy_improvement TEXT,  -- 매수 시점 개선점
+    buy_improvement TEXT,  -- 매수 시점 개선점 (실전 행동 지침 포함)
     sell_analysis JSONB,  -- 매도 시점 상세 분석
     sell_evaluation TEXT,  -- 매도 시점 종합 평가
-    sell_improvement TEXT,  -- 매도 시점 개선점
+    sell_improvement TEXT,  -- 매도 시점 개선점 (실전 행동 지침 포함)
     tokens_used INTEGER,  -- OpenAI API 사용 토큰 수
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()

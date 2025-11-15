@@ -104,7 +104,7 @@ async def get_report(
             SELECT 
                 trade_cycle_id, symbol, interval, start_date, end_date,
                 profit_loss_rate, average_buy_price, average_sell_price,
-                total_investment_amount, overall_evaluation,
+                total_investment_amount, overall_evaluation, market_context,
                 buy_analysis, buy_evaluation, buy_improvement,
                 sell_analysis, sell_evaluation, sell_improvement,
                 tokens_used, created_at
@@ -132,6 +132,7 @@ async def get_report(
             success=True,
             trade_cycle_id=row["trade_cycle_id"],
             overall_evaluation=row["overall_evaluation"],
+            market_context=row.get("market_context", ""),
             buy_analysis=buy_analysis,
             buy_evaluation=row["buy_evaluation"],
             buy_improvement=row["buy_improvement"],
@@ -173,12 +174,12 @@ async def _save_report_to_db(
         INSERT INTO reports (
             trade_cycle_id, symbol, interval, start_date, end_date,
             profit_loss_rate, average_buy_price, average_sell_price,
-            total_investment_amount, overall_evaluation,
+            total_investment_amount, overall_evaluation, market_context,
             buy_analysis, buy_evaluation, buy_improvement,
             sell_analysis, sell_evaluation, sell_improvement,
             tokens_used, created_at, updated_at
         ) VALUES (
-            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20
         )
         ON CONFLICT (trade_cycle_id) 
         DO UPDATE SET
@@ -191,6 +192,7 @@ async def _save_report_to_db(
             average_sell_price = EXCLUDED.average_sell_price,
             total_investment_amount = EXCLUDED.total_investment_amount,
             overall_evaluation = EXCLUDED.overall_evaluation,
+            market_context = EXCLUDED.market_context,
             buy_analysis = EXCLUDED.buy_analysis,
             buy_evaluation = EXCLUDED.buy_evaluation,
             buy_improvement = EXCLUDED.buy_improvement,
@@ -213,6 +215,7 @@ async def _save_report_to_db(
         float(request.average_sell_price),
         float(request.total_investment_amount),
         report_data["overallEvaluation"],
+        report_data.get("marketContext", ""),
         json.dumps(report_data["buyAnalysis"]),
         report_data["buyEvaluation"],
         report_data["buyImprovement"],
@@ -249,6 +252,7 @@ async def _generate_and_store_report(
             success=True,
             trade_cycle_id=request.trade_cycle_id,
             overall_evaluation=report_data["overallEvaluation"],
+            market_context=report_data.get("marketContext", ""),
             buy_analysis=report_data["buyAnalysis"],
             buy_evaluation=report_data["buyEvaluation"],
             buy_improvement=report_data["buyImprovement"],
