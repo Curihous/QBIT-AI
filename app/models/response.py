@@ -20,3 +20,4 @@ class GenerateReportResponse(BaseModel):
     sell_improvement: str = Field(..., alias="sellImprovement", description="매도 시점 개선점")
     generated_at: datetime = Field(..., alias="generatedAt", description="리포트 생성 시간")
     tokens_used: int = Field(..., alias="tokensUsed", description="OpenAI API 사용 토큰 수", ge=0)
+    interval: str = Field(..., description="리포트 생성에 사용된 차트 해상도 (예: 1m, 5m, 15m, 1h, 1d)")
