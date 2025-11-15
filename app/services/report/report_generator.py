@@ -150,19 +150,42 @@ class ReportGenerator:
 {{
   "overallEvaluation": "전체 매매에 대한 종합 평가 (5-7문장). 다음 내용을 모두 포함하세요: 1) 전체 매매 평가, 2) 리스크 관리 분석 (포지션 사이징, 손절/익절 기준, 변동성(ATR) 기반 리스크 평가, 보유 기간 중 최대 낙폭), 3) 보유 기간 분석 (보유 기간 동안의 가격 움직임, 최고점/최저점 대비 매도 타이밍 평가, 조기 매도/지연 매도 여부, 보유 기간 중 주요 이벤트가 가격에 미친 영향), 4) 성과 평가 지표 (손익률 외에 보유 기간 대비 수익률, 최대 낙폭 대비 수익률, 리스크 대비 수익률)",
   "marketContext": "보유기간 시장 동향 (2-3문장): 위에 제공된 뉴스를 바탕으로 해당 기간의 주요 시장 이슈와 동향을 요약하세요",
-  "buyAnalysis": {{ }},
+  "buyAnalysis": {{
+    "지표명1": {{
+      "value": 지표_수치값,
+      "analysis": "해당 수치의 의미와 해석 (1-2문장)"
+    }},
+    "지표명2": {{
+      "value": 지표_수치값,
+      "analysis": "해당 수치의 의미와 해석 (1-2문장)"
+    }}
+  }},
   "buyEvaluation": "매수 타이밍에 대한 종합 평가 (2-3문장). 각 지표의 의미와 해석 방법을 교육적으로 설명하세요",
   "buyImprovement": "매수 시점의 구체적인 개선점 (4-5문장). 다음 매매에서 바로 적용할 수 있는 실전 행동 지침을 제시하세요. 구체적인 진입 기준, 지표 조합 전략, 리스크 관리 방법 등을 포함하세요. 예: '다음 매수 시 RSI가 30 이하이고 MACD가 골든크로스를 형성할 때 진입 고려'",
-  "sellAnalysis": {{ }},
+  "sellAnalysis": {{
+    "지표명1": {{
+      "value": 지표_수치값,
+      "analysis": "해당 수치의 의미와 해석 (1-2문장)"
+    }},
+    "지표명2": {{
+      "value": 지표_수치값,
+      "analysis": "해당 수치의 의미와 해석 (1-2문장)"
+    }}
+  }},
   "sellEvaluation": "매도 타이밍에 대한 종합 평가 (2-3문장). 각 지표의 의미와 해석 방법을 교육적으로 설명하세요",
   "sellImprovement": "매도 시점의 구체적인 개선점 (4-5문장). 다음 매매에서 바로 적용할 수 있는 실전 행동 지침을 제시하세요. 구체적인 청산 기준, 지표 조합 전략, 리스크 관리 방법 등을 포함하세요"
 }}
 
 buyAnalysis와 sellAnalysis 작성 지침:
 - 위에서 제공된 모든 기술적 지표를 종합적으로 분석하세요
-- 해당 매매 시점에서 가장 중요했다고 판단되는 4개 지표를 선택하여 집중 분석하세요
-- 4개 지표 선택 기준: 매매 타이밍 결정에 결정적이었거나, 명확한 신호를 보였거나, 리스크를 잘 나타낸 지표
-- 선택한 4개 지표 각각에 대해 의미 있는 분석과 해석을 제공하세요. 각 지표의 의미와 해석 방법을 교육적으로 설명하세요
+- 지표가 "계산 불가 (데이터 부족)" 또는 None으로 표시된 경우, 해당 지표는 분석에서 완전히 제외하고 실제로 계산된 지표만 분석하세요
+- 해당 매매 시점에서 가장 중요했다고 판단되는 2개 혹은 4개 지표를 선택하여 집중 분석하세요 (계산된 지표가 2개 미만이면 가능한 만큼만 선택)
+- 지표 선택 기준: 매매 타이밍 결정에 결정적이었거나, 명확한 신호를 보였거나, 리스크를 잘 나타낸 지표
+- 선택한 지표 각각에 대해 다음과 같은 구조로 작성하세요:
+  * 키: 지표명 (예: "RSI", "MACD", "볼린저 밴드" 등)
+  * 값: 객체 형태로 {"value": 실제_수치값, "analysis": "해당 수치의 의미와 해석 (1-2문장)"}
+- value 필드에는 위에서 제공된 실제 지표 수치 값을 숫자로 명시하세요
+- analysis 필드에는 해당 수치의 의미, 해석 방법, 매매 타이밍에 대한 시사점을 교육적으로 설명하세요. 단순 개념 설명이 아닌, 해당 시점의 실제 지표 값 기반 분석을 제공하세요
 - 위에 제공된 매매 기간 주요 뉴스를 참고하여 시장 상황과 주요 이슈를 반영하세요
 - 뉴스 내용과 기술적 지표를 연결하여 종합적인 분석을 제공하세요. 뉴스가 가격/지표에 미친 영향을 구체적으로 분석하세요
 - marketContext는 위에 제공된 뉴스 리스트를 바탕으로 해당 기간의 주요 시장 이슈, 뉴스, 동향을 2-3문장으로 요약하세요
@@ -170,12 +193,24 @@ buyAnalysis와 sellAnalysis 작성 지침:
 - buyImprovement와 sellImprovement에는 구체적이고 실전 적용 가능한 행동 지침을 제시하세요 (예: "RSI 30 이하 + MACD 골든크로스 시 진입")
 - 순수 JSON 형식으로만 응답하세요 (추가 텍스트 없이)
 
-예시: 
+지표 선택 예시: 
 - RSI가 극단값을 보였다면 선택
 - MACD가 명확한 크로스를 보였다면 선택
 - 볼린저 밴드 돌파가 있었다면 선택
 - 거래량 급증/급감이 있었다면 선택
-- ADX가 강한 추세를 나타냈다면 선택"""
+- ADX가 강한 추세를 나타냈다면 선택
+
+buyAnalysis/sellAnalysis 구조 예시:
+{{
+  "RSI": {{
+    "value": 45.32,
+    "analysis": "RSI 45.32는 중립 구간으로, 과매수나 과매도 상태가 아닙니다. 다만 하락 추세에서 반등 신호로 해석할 수 있으며, 추가 상승 모멘텀 확인이 필요합니다."
+  }},
+  "MACD": {{
+    "value": 0.5,
+    "analysis": "MACD 0.5는 양의 값을 보이며 상승 모멘텀이 있음을 나타냅니다. Signal과의 관계를 확인하여 골든크로스 여부를 판단해야 합니다."
+  }}
+}}"""
 
         return prompt
 
@@ -187,54 +222,86 @@ buyAnalysis와 sellAnalysis 작성 지침:
         lines.append(f"종가: ${analysis.get('close_price', 0)}")
         
         # RSI
-        if analysis.get('rsi_14'):
-            lines.append(f"RSI(14): {analysis['rsi_14']}")
+        rsi_val = analysis.get('rsi_14')
+        if rsi_val is not None:
+            lines.append(f"RSI(14): {rsi_val}")
+        else:
+            lines.append(f"RSI(14): 계산 불가 (데이터 부족)")
         
         # MACD
-        if analysis.get('macd') is not None:
-            lines.append(f"MACD: {analysis['macd']}, Signal: {analysis.get('macd_signal')}, Histogram: {analysis.get('macd_hist')}")
+        macd_val = analysis.get('macd')
+        if macd_val is not None:
+            lines.append(f"MACD: {macd_val}, Signal: {analysis.get('macd_signal')}, Histogram: {analysis.get('macd_hist')}")
+        else:
+            lines.append(f"MACD: 계산 불가 (데이터 부족)")
         
         # 이동평균
         sma_values = []
-        if analysis.get('sma_20'): sma_values.append(f"SMA20: {analysis['sma_20']}")
-        if analysis.get('sma_50'): sma_values.append(f"SMA50: {analysis['sma_50']}")
-        if analysis.get('sma_200'): sma_values.append(f"SMA200: {analysis['sma_200']}")
+        if analysis.get('sma_20') is not None:
+            sma_values.append(f"SMA20: {analysis['sma_20']}")
+        if analysis.get('sma_50') is not None:
+            sma_values.append(f"SMA50: {analysis['sma_50']}")
+        if analysis.get('sma_200') is not None:
+            sma_values.append(f"SMA200: {analysis['sma_200']}")
         if sma_values:
             lines.append(f"이동평균: {', '.join(sma_values)}")
         
         ema_values = []
-        if analysis.get('ema_12'): ema_values.append(f"EMA12: {analysis['ema_12']}")
-        if analysis.get('ema_26'): ema_values.append(f"EMA26: {analysis['ema_26']}")
+        if analysis.get('ema_12') is not None:
+            ema_values.append(f"EMA12: {analysis['ema_12']}")
+        if analysis.get('ema_26') is not None:
+            ema_values.append(f"EMA26: {analysis['ema_26']}")
         if ema_values:
             lines.append(f"지수이동평균: {', '.join(ema_values)}")
         
         # Bollinger Bands
-        if analysis.get('bb_upper'):
-            lines.append(f"볼린저 밴드: Upper {analysis['bb_upper']}, Middle {analysis.get('bb_middle')}, Lower {analysis.get('bb_lower')}")
+        bb_upper = analysis.get('bb_upper')
+        if bb_upper is not None:
+            lines.append(f"볼린저 밴드: Upper {bb_upper}, Middle {analysis.get('bb_middle')}, Lower {analysis.get('bb_lower')}")
+        else:
+            lines.append(f"볼린저 밴드: 계산 불가 (데이터 부족)")
         
         # Stochastic
-        if analysis.get('stoch_k'):
-            lines.append(f"Stochastic: K {analysis['stoch_k']}, D {analysis.get('stoch_d')}")
+        stoch_k = analysis.get('stoch_k')
+        if stoch_k is not None:
+            lines.append(f"Stochastic: K {stoch_k}, D {analysis.get('stoch_d')}")
+        else:
+            lines.append(f"Stochastic: 계산 불가 (데이터 부족)")
         
         # ADX
-        if analysis.get('adx'):
-            lines.append(f"ADX(추세강도): {analysis['adx']}")
+        adx_val = analysis.get('adx')
+        if adx_val is not None:
+            lines.append(f"ADX(추세강도): {adx_val}")
+        else:
+            lines.append(f"ADX(추세강도): 계산 불가 (데이터 부족)")
         
         # ATR
-        if analysis.get('atr'):
-            lines.append(f"ATR(변동성): {analysis['atr']}")
+        atr_val = analysis.get('atr')
+        if atr_val is not None:
+            lines.append(f"ATR(변동성): {atr_val}")
+        else:
+            lines.append(f"ATR(변동성): 계산 불가 (데이터 부족)")
         
         # OBV
-        if analysis.get('obv'):
-            lines.append(f"OBV: {analysis['obv']}")
+        obv_val = analysis.get('obv')
+        if obv_val is not None:
+            lines.append(f"OBV: {obv_val}")
+        else:
+            lines.append(f"OBV: 계산 불가 (데이터 부족)")
         
         # Williams %R
-        if analysis.get('willr'):
-            lines.append(f"Williams %R: {analysis['willr']}")
+        willr_val = analysis.get('willr')
+        if willr_val is not None:
+            lines.append(f"Williams %R: {willr_val}")
+        else:
+            lines.append(f"Williams %R: 계산 불가 (데이터 부족)")
         
         # 거래량
-        if analysis.get('volume_change') is not None:
-            lines.append(f"거래량 변화: {analysis['volume_change']:+.1f}%")
+        volume_change = analysis.get('volume_change')
+        if volume_change is not None:
+            lines.append(f"거래량 변화: {volume_change:+.1f}%")
+        else:
+            lines.append(f"거래량 변화: 계산 불가 (데이터 부족)")
         
         return "\n".join(lines) if lines else "데이터 부족"
 
