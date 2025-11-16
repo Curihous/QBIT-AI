@@ -1,6 +1,6 @@
 # 뉴스 칼럼 API 라우터
 from typing import Any, Optional, List
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, BackgroundTasks
 from pydantic import BaseModel
 import structlog
 import random
@@ -88,25 +88,39 @@ async def delete_all_columns() -> dict[str, Any]:
 @router.post(
     "/columns/generate",
     summary="칼럼 생성",
-    description="핵심 종목(169개)의 AI 칼럼을 생성하고 DB에 저장합니다.",
+    description="핵심 종목(169개)의 AI 칼럼을 생성하고 DB에 저장합니다. 백그라운드에서 실행됩니다.",
 )
-async def generate_columns(limit: Optional[int] = None) -> dict[str, Any]:
+async def generate_columns(
+    background_tasks: BackgroundTasks,
+    limit: Optional[int] = None
+) -> dict[str, Any]:
     """
-    칼럼 생성
+    칼럼 생성 (백그라운드 작업)
     
     Args:
         limit: 생성할 종목 수 (None이면 전체 169개)
     
     Returns:
-        생성 결과 (성공/실패 통계)
+        작업 시작 확인 메시지
     """
     try:
         if not news_column_service:
             raise Exception("칼럼 서비스가 초기화되지 않았습니다.")
         
         logger.info("column_generation_requested", limit=limit)
-        result = await news_column_service.generate_all_columns(limit=limit)
-        return result
+        
+        # 백그라운드 작업으로 실행
+        background_tasks.add_task(
+            _generate_columns_background,
+            limit=limit
+        )
+        
+        return {
+            "success": True,
+            "message": "칼럼 생성 작업이 시작되었습니다. 백그라운드에서 실행 중입니다.",
+            "limit": limit,
+            "estimated_time": "약 30-40분 소요 예상"
+        }
         
     except Exception as e:
         logger.error("column_generation_failed", error=str(e))
@@ -114,6 +128,22 @@ async def generate_columns(limit: Optional[int] = None) -> dict[str, Any]:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"칼럼 생성 실패: {str(e)}"
         )
+
+
+async def _generate_columns_background(limit: Optional[int] = None):
+    """
+    백그라운드에서 칼럼 생성 실행
+    """
+    try:
+        logger.info("column_generation_background_started", limit=limit)
+        result = await news_column_service.generate_all_columns(limit=limit)
+        logger.info(
+            "column_generation_background_completed",
+            total_success=result.get("total_success", 0),
+            total_failed=result.get("failed", 0)
+        )
+    except Exception as e:
+        logger.error("column_generation_background_failed", error=str(e))
 
 
 @router.get(
