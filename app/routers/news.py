@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
 import structlog
 import random
+from datetime import datetime, timedelta
 from app.services.database import DatabaseService
 from app.services.analysis import LiquidStocksService, CorrelationService
 from app.services.news import NewsColumnService
@@ -47,6 +48,41 @@ def init_services(
     correlation_service = correlation
     news_column_service = news_column
     limiter = rate_limiter
+
+
+@router.delete(
+    "/columns",
+    summary="전체 칼럼 삭제 (관리자용)",
+    description="모든 칼럼을 삭제합니다. 재생성 전에 사용합니다.",
+)
+async def delete_all_columns() -> dict[str, Any]:
+    """
+    전체 칼럼 삭제
+    
+    DB의 모든 칼럼을 삭제합니다.
+    주로 잘못 생성된 칼럼을 모두 삭제하고 재생성하기 위해 사용됩니다.
+    
+    Returns:
+        삭제된 칼럼 개수
+    """
+    try:
+        if not news_column_service or not news_column_service.repository:
+            raise Exception("칼럼 서비스가 초기화되지 않았습니다.")
+        
+        deleted_count = await news_column_service.repository.delete_all_columns()
+        
+        return {
+            "success": True,
+            "message": f"전체 {deleted_count}개의 칼럼이 삭제되었습니다.",
+            "deleted_count": deleted_count
+        }
+        
+    except Exception as e:
+        logger.error("delete_all_columns_failed", error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"칼럼 삭제 실패: {str(e)}"
+        )
 
 
 @router.post(
@@ -208,6 +244,64 @@ async def get_related_tickers(ticker: str, limit: int = 20) -> dict[str, Any]:
 
 
 @router.get(
+    "/massive/{ticker}",
+    summary="뉴스 데이터 조회",
+    description="Massive API를 사용하여 특정 종목의 뉴스 데이터를 조회합니다.",
+)
+async def get_massive_news_exact(
+    ticker: str,
+    limit: int = 10,
+    published_utc: Optional[str] = None
+) -> dict[str, Any]:
+    """
+    뉴스 데이터 조회
+    
+    Massive API를 사용하여 특정 종목의 뉴스를 검색합니다.
+    ticker가 뉴스의 tickers 배열 첫 번째 요소인 경우만 반환합니다.
+    
+    Args:
+        ticker: 종목 심볼 (예: AAPL)
+        limit: 반환할 최대 개수 (기본값: 10)
+        published_utc: 시작 날짜 (YYYY-MM-DD 형식, 예: "2025-11-16")
+    
+    Returns:
+        뉴스 기사 리스트
+    """
+    try:
+        from app.services.external import MassiveService
+        
+        massive_service = MassiveService()
+        
+        news_list = await massive_service.get_news_exact_match(
+            ticker=ticker.upper(),
+            limit=limit,
+            published_utc=published_utc
+        )
+        
+        if not news_list:
+            return {
+                "success": True,
+                "ticker": ticker.upper(),
+                "count": 0,
+                "news": []
+            }
+        
+        return {
+            "success": True,
+            "ticker": ticker.upper(),
+            "count": len(news_list),
+            "news": news_list
+        }
+        
+    except Exception as e:
+        logger.error("massive_news_search_failed", ticker=ticker, error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"뉴스 검색 실패: {str(e)}"
+        )
+
+
+@router.get(
     "/liquid-stocks/check/{ticker}",
     summary="유동성 종목 확인 (테스트)",
     description="특정 종목이 유동성 Top 3000에 포함되는지 확인합니다.",
@@ -289,10 +383,22 @@ async def recommend_column(request: PortfolioRequest) -> dict[str, Any]:
             column = await news_column_service.repository.get_column(ticker)
             if column:
                 available_columns.append(column)
+                logger.debug(
+                    "portfolio_column_found",
+                    ticker=ticker,
+                    column_ticker=column["ticker"],
+                    source_ticker=column.get("source_ticker")
+                )
+            else:
+                logger.debug("portfolio_column_not_found", ticker=ticker)
         
         if available_columns:
             selected_column = random.choice(available_columns)
-            logger.info("recommend_portfolio_match", ticker=selected_column["ticker"])
+            logger.info(
+                "recommend_portfolio_match",
+                ticker=selected_column["ticker"],
+                source_ticker=selected_column.get("source_ticker")
+            )
             return {
                 "success": True,
                 "source": "portfolio",
@@ -306,6 +412,11 @@ async def recommend_column(request: PortfolioRequest) -> dict[str, Any]:
         
         for ticker in tickers:
             related_tickers = await correlation_service.get_related_tickers(ticker=ticker, limit=10)
+            logger.debug(
+                "correlation_search_started",
+                original_ticker=ticker,
+                related_count=len(related_tickers)
+            )
             
             for related in related_tickers:
                 related_ticker = related["ticker"]

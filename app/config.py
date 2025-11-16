@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Optional
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -40,7 +41,7 @@ class Settings(BaseSettings):
 
     # 애플리케이션 버전
     # deploy브랜치로 병합할 때
-    app_version: str = "1.2.1"
+    app_version: str = "1.2.2"
 
     @property
     def allowed_origins_list(self) -> list[str]:

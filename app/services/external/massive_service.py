@@ -302,6 +302,105 @@ class MassiveService:
             )
             return None
     
+    # News API로 특정 종목의 뉴스 조회 (정확히 일치하는 것만)
+    async def get_news_exact_match(
+        self,
+        ticker: str,
+        limit: int = 10,
+        published_utc: Optional[str] = None,
+        order: str = "desc",
+        sort: str = "published_utc"
+    ) -> Optional[List[Dict[str, Any]]]:
+        """
+        Massive API로 특정 종목의 뉴스 조회 (정확히 일치하는 것만)
+        
+        ticker가 뉴스의 tickers 배열 첫 번째 요소인 경우만 반환합니다.
+        """
+        try:
+            url = f"{self.base_url}/v2/reference/news"
+            
+            params = {
+                "ticker": ticker.upper(),
+                "limit": min(limit * 3, 1000),  # 필터링을 위해 더 많이 가져옴
+                "order": order,
+                "sort": sort
+            }
+            
+            if published_utc:
+                params["published_utc.gte"] = published_utc
+            
+            headers = {
+                "Authorization": f"Bearer {self.api_key}"
+            }
+            
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.get(url, params=params, headers=headers)
+                
+                if response.status_code == 429:
+                    logger.warning(
+                        "news_api_rate_limit",
+                        ticker=ticker,
+                        message="Rate limit exceeded, skipping"
+                    )
+                    return None
+                
+                response.raise_for_status()
+                data = response.json()
+                
+                results = data.get("results", [])
+                if not results:
+                    logger.debug(
+                        "news_no_data",
+                        ticker=ticker
+                    )
+                    return None
+                
+                # ticker가 정확히 첫 번째인 뉴스만 필터링
+                filtered_results = []
+                ticker_upper = ticker.upper()
+                
+                for article in results:
+                    article_tickers = article.get("tickers", [])
+                    # tickers 배열의 첫 번째 요소가 검색 종목인 경우만
+                    if article_tickers and article_tickers[0].upper() == ticker_upper:
+                        filtered_results.append(article)
+                        if len(filtered_results) >= limit:
+                            break
+                
+                if not filtered_results:
+                    logger.debug(
+                        "news_no_exact_match",
+                        ticker=ticker,
+                        total_results=len(results)
+                    )
+                    return None
+                
+                logger.debug(
+                    "news_fetched_exact_match",
+                    ticker=ticker,
+                    total_results=len(results),
+                    filtered_results=len(filtered_results)
+                )
+                
+                return filtered_results
+                
+        except httpx.HTTPStatusError as e:
+            logger.error(
+                "news_api_http_error",
+                ticker=ticker,
+                status_code=e.response.status_code,
+                error=str(e)
+            )
+            return None
+        except Exception as e:
+            logger.error(
+                "news_api_failed",
+                ticker=ticker,
+                error=str(e),
+                error_type=type(e).__name__
+            )
+            return None
+
     # News API로 특정 종목의 뉴스 조회
     async def get_news(
         self,
