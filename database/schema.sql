@@ -61,3 +61,19 @@ CREATE TABLE IF NOT EXISTS reports (
 );
 CREATE INDEX IF NOT EXISTS idx_reports_symbol ON reports(symbol);
 CREATE INDEX IF NOT EXISTS idx_reports_created_at ON reports(created_at DESC);
+
+
+-- 학습 카드 테이블
+CREATE TABLE IF NOT EXISTS learning_cards (
+    id                      SERIAL PRIMARY KEY,
+    title                   TEXT        NOT NULL, -- 카드 제목
+    description             TEXT        NOT NULL, -- 한 줄 설명
+    contents                TEXT[]      NOT NULL, -- 본문 내용
+    category                TEXT        NOT NULL, -- 예: 리스크관리, 기술지표, 투자심리 등
+    level                   INTEGER     NOT NULL CHECK (level BETWEEN 1 AND 5), -- 난이도 1~5
+    keywords                TEXT[]      NOT NULL,  -- 태깅/추천용 키워드
+    image_urls              TEXT[]      NOT NULL, -- 학습 카드 이미지 S3 URL 리스트
+    created_at              TIMESTAMP   NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMP   NOT NULL DEFAULT NOW()
+);
+

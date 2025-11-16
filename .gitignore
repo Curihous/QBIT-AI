@@ -35,3 +35,6 @@ build/
 dist/
 *.egg-info/
 
+# 학습 카드 로컬 JSON (민감/콘텐츠 자산이므로 Git에 올리지 않음)
+database/learning_cards.json
+
