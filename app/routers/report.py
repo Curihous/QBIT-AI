@@ -156,7 +156,6 @@ async def get_report(
                 level=r["level"],
                 keywords=r["keywords"],
                 imageUrls=r["image_urls"],
-                isReportRecommendable=True,
             )
             for r in learning_rows
         ]
@@ -267,9 +266,11 @@ async def _save_report_learning_cards(
     trade_cycle_id: int,
     learning_cards: list[LearningCardResponse],
 ) -> None:
+    """
+    report_learning_cards 매핑을 하나의 트랜잭션으로 저장.
+    삭제와 삽입이 함께 커밋되거나 함께 롤백되도록 보장한다.
+    """
     delete_query = "DELETE FROM report_learning_cards WHERE trade_cycle_id = $1"
-    await db_service.execute(delete_query, trade_cycle_id)
-
     insert_query = """
         INSERT INTO report_learning_cards (
             trade_cycle_id,
@@ -278,15 +279,21 @@ async def _save_report_learning_cards(
         ) VALUES ($1, $2, $3)
     """
 
-    position = 1
-    for card in learning_cards:
-        await db_service.execute(
-            insert_query,
-            trade_cycle_id,
-            card.id,
-            position,
-        )
-        position += 1
+    async with db_service.pool.acquire() as conn:  # type: ignore[attr-defined]
+        async with conn.transaction():
+            # 기존 매핑 삭제
+            await conn.execute(delete_query, trade_cycle_id)
+
+            # 새로운 매핑 삽입
+            position = 1
+            for card in learning_cards:
+                await conn.execute(
+                    insert_query,
+                    trade_cycle_id,
+                    card.id,
+                    position,
+                )
+                position += 1
 
 # 매매 분석 리포트 생성 및 DB에 저장
 async def _generate_and_store_report(

@@ -12,7 +12,6 @@ class LearningCardResponse(BaseModel):
     level: int = Field(..., description="난이도 (1~5)")
     keywords: List[str] = Field(..., description="태깅/추천용 키워드")
     image_urls: List[str] = Field(..., alias="imageUrls", description="학습 카드 이미지 URL 리스트")
-    is_report_recommendable: bool = Field(..., alias="isReportRecommendable", description="리포트 기반 추천 대상 여부")
 
 
 class GenerateReportResponse(BaseModel):

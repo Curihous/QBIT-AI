@@ -41,8 +41,7 @@ class LearningCardRecommender:
                     category,
                     level,
                     keywords,
-                    image_urls,
-                    is_report_recommendable
+                    image_urls
                 FROM learning_cards
             """
             rows = await self.db_service.fetch(query)
@@ -62,7 +61,6 @@ class LearningCardRecommender:
                     "level": row["level"],
                     "keywords": row["keywords"],
                     "image_urls": row["image_urls"],
-                    "is_report_recommendable": row["is_report_recommendable"],
                 }
                 for row in rows
             ]

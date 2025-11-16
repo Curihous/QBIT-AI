@@ -41,7 +41,7 @@ class Settings(BaseSettings):
 
     # 애플리케이션 버전
     # deploy브랜치로 병합할 때
-    app_version: str = "1.3.2"
+    app_version: str = "1.3.3"
 
     @property
     def allowed_origins_list(self) -> list[str]:
