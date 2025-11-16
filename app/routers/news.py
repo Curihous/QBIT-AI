@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
 import structlog
 import random
+from datetime import datetime, timedelta
 from app.services.database import DatabaseService
 from app.services.analysis import LiquidStocksService, CorrelationService
 from app.services.news import NewsColumnService
@@ -289,10 +290,22 @@ async def recommend_column(request: PortfolioRequest) -> dict[str, Any]:
             column = await news_column_service.repository.get_column(ticker)
             if column:
                 available_columns.append(column)
+                logger.debug(
+                    "portfolio_column_found",
+                    ticker=ticker,
+                    column_ticker=column["ticker"],
+                    source_ticker=column.get("source_ticker")
+                )
+            else:
+                logger.debug("portfolio_column_not_found", ticker=ticker)
         
         if available_columns:
             selected_column = random.choice(available_columns)
-            logger.info("recommend_portfolio_match", ticker=selected_column["ticker"])
+            logger.info(
+                "recommend_portfolio_match",
+                ticker=selected_column["ticker"],
+                source_ticker=selected_column.get("source_ticker")
+            )
             return {
                 "success": True,
                 "source": "portfolio",
@@ -301,30 +314,77 @@ async def recommend_column(request: PortfolioRequest) -> dict[str, Any]:
             }
         
         # Step 2: 상관종목 칼럼 검색
+        # 원본 종목의 칼럼이 없을 때, 상관종목의 뉴스를 사용하여 생성된 칼럼을 찾음
+        # (source_ticker가 상관종목이고, ticker가 원본 종목인 칼럼)
         if not correlation_service:
             raise Exception("상관계수 서비스가 초기화되지 않았습니다.")
         
         for ticker in tickers:
             related_tickers = await correlation_service.get_related_tickers(ticker=ticker, limit=10)
+            logger.debug(
+                "correlation_search_started",
+                original_ticker=ticker,
+                related_count=len(related_tickers)
+            )
             
+            # 상관종목의 뉴스를 사용하여 원본 종목의 칼럼을 즉시 생성
+            # 이렇게 하면 원본 종목에 대한 칼럼이 반환됩니다.
             for related in related_tickers:
                 related_ticker = related["ticker"]
-                column = await news_column_service.repository.get_column(related_ticker)
-                if column:
-                    logger.info(
-                        "recommend_correlation_match",
+                
+                try:
+                    # 상관종목의 뉴스 검색 (최근 1일)
+                    from_date = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+                    news_list = await news_column_service.massive_service.get_news(
+                        ticker=related_ticker,
+                        limit=3,
+                        published_utc=from_date
+                    )
+                    
+                    if not news_list:
+                        logger.debug(
+                            "correlation_no_news",
+                            original_ticker=ticker,
+                            related_ticker=related_ticker
+                        )
+                        continue
+                    
+                    # 첫 번째 뉴스 기사 사용
+                    news_article = news_list[0]
+                    
+                    # 원본 종목의 칼럼 생성 (상관종목의 뉴스 사용)
+                    generated_column = await news_column_service._generate_column_from_news(
+                        ticker=ticker,
+                        news_article=news_article,
+                        source_ticker=related_ticker
+                    )
+                    
+                    if generated_column and news_column_service.repository:
+                        # DB에 저장
+                        await news_column_service.repository.save_column(generated_column)
+                        
+                        logger.info(
+                            "recommend_correlation_generated",
+                            original_ticker=ticker,
+                            related_ticker=related_ticker,
+                            correlation=related["correlation"]
+                        )
+                        return {
+                            "success": True,
+                            "source": "correlation",
+                            "message": "{nickname}님이 보유하고 있는 종목과 관련된 오늘의 칼럼을 추천합니다.",
+                            "original_ticker": ticker,
+                            "correlation": related["correlation"],
+                            "column": generated_column
+                        }
+                except Exception as e:
+                    logger.warning(
+                        "correlation_column_generation_failed",
                         original_ticker=ticker,
                         related_ticker=related_ticker,
-                        correlation=related["correlation"]
+                        error=str(e)
                     )
-                    return {
-                        "success": True,
-                        "source": "correlation",
-                        "message": "{nickname}님이 보유하고 있는 종목과 관련된 오늘의 칼럼을 추천합니다.",
-                        "original_ticker": ticker,
-                        "correlation": related["correlation"],
-                        "column": column
-                    }
+                    continue
         
         # Step 3: 인기 칼럼 반환
         popular_columns = await news_column_service.repository.get_all_columns(limit=10)
