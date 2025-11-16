@@ -11,8 +11,9 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from fastapi import HTTPException
 from app.config import get_settings
-from app.routers import report_router, news_router
+from app.routers import report_router, news_router, learning_router
 from app.routers.news import init_services as init_news_services
+from app.routers.learning import init_repository as init_learning_repository
 from app.services.database import DatabaseService
 from app.services.analysis import LiquidStocksService, CorrelationService
 from app.services.news import NewsColumnService
@@ -155,6 +156,10 @@ async def lifespan(app: FastAPI):
         init_news_services(db_service, liquid_stocks_service, correlation_service, news_column_service, limiter)
         logger.info("news_router_initialized")
         
+        # Learning 카드 Repository 초기화
+        init_learning_repository(db_service)
+        logger.info("learning_repository_initialized")
+        
         # 앱 상태에 DB 서비스 저장
         app.state.db_service = db_service
         logger.info("db_service_stored_in_app_state")
@@ -286,6 +291,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 # 라우터 등록
 app.include_router(report_router)
 app.include_router(news_router)
+app.include_router(learning_router)
 
 
 @app.get(

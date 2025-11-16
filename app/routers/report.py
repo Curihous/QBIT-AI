@@ -9,8 +9,9 @@ from pydantic import ValidationError
 
 from app.config import get_settings
 from app.models.request import GenerateReportRequest
-from app.models.response import GenerateReportResponse
+from app.models.response import GenerateReportResponse, LearningCardResponse
 from app.services.report import ReportGenerator
+from app.services.report.learning_card_recommender import LearningCardRecommender
 from app.services.database import DatabaseService
 
 logger = structlog.get_logger()
@@ -128,6 +129,37 @@ async def get_report(
         buy_analysis = row["buy_analysis"] if isinstance(row["buy_analysis"], dict) else json.loads(row["buy_analysis"])
         sell_analysis = row["sell_analysis"] if isinstance(row["sell_analysis"], dict) else json.loads(row["sell_analysis"])
 
+        # 리포트별 추천 학습 카드 조회
+        learning_cards_query = """
+            SELECT 
+                lc.id,
+                lc.title,
+                lc.description,
+                lc.contents,
+                lc.category,
+                lc.level,
+                lc.keywords,
+                lc.image_urls
+            FROM report_learning_cards rlc
+            JOIN learning_cards lc ON lc.id = rlc.learning_card_id
+            WHERE rlc.trade_cycle_id = $1
+            ORDER BY rlc.position ASC
+        """
+        learning_rows = await db_service.fetch(learning_cards_query, trade_cycle_id)
+        learning_cards = [
+            LearningCardResponse(
+                id=r["id"],
+                title=r["title"],
+                description=r["description"],
+                contents=r["contents"],
+                category=r["category"],
+                level=r["level"],
+                keywords=r["keywords"],
+                imageUrls=r["image_urls"],
+            )
+            for r in learning_rows
+        ]
+
         response = GenerateReportResponse(
             success=True,
             trade_cycle_id=row["trade_cycle_id"],
@@ -141,7 +173,8 @@ async def get_report(
             sell_improvement=row["sell_improvement"],
             generated_at=row["created_at"],
             tokens_used=row["tokens_used"],
-            interval=row["interval"]
+            interval=row["interval"],
+            learning_cards=learning_cards
         )
 
         logger.info("report_retrieved", trade_cycle_id=trade_cycle_id)
@@ -227,6 +260,41 @@ async def _save_report_to_db(
         generated_at
     )
 
+
+async def _save_report_learning_cards(
+    db_service: DatabaseService,
+    trade_cycle_id: int,
+    learning_cards: list[LearningCardResponse],
+) -> None:
+    """
+    report_learning_cards 매핑을 하나의 트랜잭션으로 저장.
+    삭제와 삽입이 함께 커밋되거나 함께 롤백되도록 보장한다.
+    """
+    delete_query = "DELETE FROM report_learning_cards WHERE trade_cycle_id = $1"
+    insert_query = """
+        INSERT INTO report_learning_cards (
+            trade_cycle_id,
+            learning_card_id,
+            position
+        ) VALUES ($1, $2, $3)
+    """
+
+    async with db_service.pool.acquire() as conn:  # type: ignore[attr-defined]
+        async with conn.transaction():
+            # 기존 매핑 삭제
+            await conn.execute(delete_query, trade_cycle_id)
+
+            # 새로운 매핑 삽입
+            position = 1
+            for card in learning_cards:
+                await conn.execute(
+                    insert_query,
+                    trade_cycle_id,
+                    card.id,
+                    position,
+                )
+                position += 1
+
 # 매매 분석 리포트 생성 및 DB에 저장
 async def _generate_and_store_report(
     request: GenerateReportRequest,
@@ -248,6 +316,14 @@ async def _generate_and_store_report(
 
         interval_used = request.interval
 
+        # 리포트 내용을 기반으로 학습 카드 추천
+        recommender = LearningCardRecommender(db_service=db_service)
+        learning_cards_raw = await recommender.recommend_for_report(
+            report=report_data,
+            limit=3,
+        )
+        learning_cards = [LearningCardResponse(**card) for card in learning_cards_raw]
+
         response = GenerateReportResponse(
             success=True,
             trade_cycle_id=request.trade_cycle_id,
@@ -261,7 +337,8 @@ async def _generate_and_store_report(
             sell_improvement=report_data["sellImprovement"],
             generated_at=generated_at,
             tokens_used=tokens_used,
-            interval=interval_used
+            interval=interval_used,
+            learning_cards=learning_cards
         )
 
         try:
@@ -273,7 +350,16 @@ async def _generate_and_store_report(
                 generated_at=generated_at,
                 interval_used=interval_used
             )
-            logger.info("report_saved_to_db", trade_cycle_id=request.trade_cycle_id)
+            await _save_report_learning_cards(
+                db_service=db_service,
+                trade_cycle_id=request.trade_cycle_id,
+                learning_cards=learning_cards,
+            )
+            logger.info(
+                "report_saved_to_db",
+                trade_cycle_id=request.trade_cycle_id,
+                learning_cards_count=len(learning_cards),
+            )
         except Exception as db_error:
             logger.error(
                 "report_save_failed",
