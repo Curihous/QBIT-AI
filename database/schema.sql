@@ -108,3 +108,14 @@ CREATE TABLE IF NOT EXISTS learning_cards (
     updated_at              TIMESTAMP   NOT NULL DEFAULT NOW()
 );
 
+-- 리포트별 추천 학습 카드 매핑 테이블
+CREATE TABLE IF NOT EXISTS report_learning_cards (
+    trade_cycle_id   INTEGER    NOT NULL REFERENCES reports(trade_cycle_id) ON DELETE CASCADE,
+    learning_card_id INTEGER    NOT NULL REFERENCES learning_cards(id) ON DELETE CASCADE,
+    position         INTEGER    NOT NULL, -- 정렬 위치
+    created_at       TIMESTAMP  NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (trade_cycle_id, learning_card_id)
+);
+CREATE INDEX IF NOT EXISTS idx_report_learning_cards_trade_cycle
+    ON report_learning_cards(trade_cycle_id, position);
+
