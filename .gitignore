@@ -35,3 +35,6 @@ build/
 dist/
 *.egg-info/
 
+# 학습 카드 로컬 JSON 
+database/learning_cards.json
+
