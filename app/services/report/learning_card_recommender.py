@@ -26,7 +26,6 @@ class LearningCardRecommender:
         try:
             # 리포트 텍스트 통합
             report_text = self._extract_report_text(report)
-            normalized_text = self._normalize_text(report_text)
 
             if preferred_levels is None:
                 # 기본: 1~3 레벨 위주로 추천 (입문~중급)
@@ -249,7 +248,3 @@ class LearningCardRecommender:
 
         return "\n".join(parts)
 
-    def _normalize_text(self, text: str) -> str:
-        # 간단한 전처리: 소문자 + 공백 정리
-        lowered = text.lower()
-        return re.sub(r"\s+", " ", lowered)
