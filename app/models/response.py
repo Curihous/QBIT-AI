@@ -1,6 +1,18 @@
 from datetime import datetime
-from typing import Any
+from typing import Any, List
 from pydantic import BaseModel, Field, ConfigDict
+
+
+class LearningCardResponse(BaseModel):
+    id: int = Field(..., description="학습 카드 ID")
+    title: str = Field(..., description="학습 카드 제목")
+    description: str = Field(..., description="학습 카드 한 줄 설명")
+    contents: List[str] = Field(..., description="학습 카드 본문 (문단 배열)")
+    category: str = Field(..., description="카테고리 (예: 투자기초, 리스크관리, 기술분석 등)")
+    level: int = Field(..., description="난이도 (1~5)")
+    keywords: List[str] = Field(..., description="태깅/추천용 키워드")
+    image_urls: List[str] = Field(..., alias="imageUrls", description="학습 카드 이미지 URL 리스트")
+    is_report_recommendable: bool = Field(..., alias="isReportRecommendable", description="리포트 기반 추천 대상 여부")
 
 
 class GenerateReportResponse(BaseModel):
@@ -22,3 +34,8 @@ class GenerateReportResponse(BaseModel):
     generated_at: datetime = Field(..., alias="generatedAt", description="리포트 생성 시간")
     tokens_used: int = Field(..., alias="tokensUsed", description="OpenAI API 사용 토큰 수", ge=0)
     interval: str = Field(..., description="리포트 생성에 사용된 차트 해상도 (예: 1m, 5m, 15m, 1h, 1d)")
+    learning_cards: List[LearningCardResponse] = Field(
+        ...,
+        alias="learningCards",
+        description="이번 리포트 내용을 기반으로 추천된 학습 카드 목록"
+    )
