@@ -4,6 +4,11 @@ from pydantic import BaseModel, Field, ConfigDict
 
 
 class LearningCardResponse(BaseModel):
+    model_config = ConfigDict(
+        populate_by_name=True,
+        from_attributes=True
+    )
+
     id: int = Field(..., description="학습 카드 ID")
     title: str = Field(..., description="학습 카드 제목")
     description: str = Field(..., description="학습 카드 한 줄 설명")
