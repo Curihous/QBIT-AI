@@ -152,4 +152,16 @@ class NewsColumnRepository:
         except Exception as e:
             logger.error("delete_column_failed", ticker=ticker, error=str(e))
             return False
+    
+    # 전체 칼럼 삭제
+    async def delete_all_columns(self) -> int:
+        try:
+            query = "DELETE FROM news_columns"
+            result = await self.db_service.execute(query)
+            deleted_count = int(result.split()[-1]) if result else 0
+            logger.info("all_columns_deleted", deleted_count=deleted_count)
+            return deleted_count
+        except Exception as e:
+            logger.error("delete_all_columns_failed", error=str(e))
+            return 0
 

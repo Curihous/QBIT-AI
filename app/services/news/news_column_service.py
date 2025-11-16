@@ -138,8 +138,8 @@ class NewsColumnService:
         
         for ticker in tickers:
             try:
-                # 뉴스 검색
-                news_list = await self.massive_service.get_news(
+                # 뉴스 검색 (정확히 일치하는 것만)
+                news_list = await self.massive_service.get_news_exact_match(
                     ticker=ticker,
                     limit=5,
                     published_utc=from_date
@@ -359,7 +359,8 @@ class NewsColumnService:
             column_content = await self.chatgpt_client.generate_column(
                 ticker=ticker,
                 news_title=title,
-                key_sentences=key_sentences
+                key_sentences=key_sentences,
+                source_ticker=source_ticker
             )
             
             if not column_content:
