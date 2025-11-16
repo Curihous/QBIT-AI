@@ -34,16 +34,28 @@ class NewsColumnRepository:
                 "sections": sections
             }, ensure_ascii=False)
             
-            # source_published_at을 TIMESTAMP로 변환 (문자열인 경우)
+            # source_published_at을 날짜만 추출 (YYYY-MM-DD 형식)
             published_at_timestamp = None
             if source_published_at:
                 try:
-                    # ISO 형식 문자열을 파싱
+                    # ISO 형식 문자열에서 날짜 부분만 추출 (YYYY-MM-DD)
                     if isinstance(source_published_at, str):
-                        published_at_timestamp = datetime.fromisoformat(source_published_at.replace('Z', '+00:00'))
+                        # "2025-11-14T19:16:24Z" -> "2025-11-14"
+                        date_str = source_published_at.split('T')[0]
+                        # 날짜만 파싱하여 시간은 00:00:00으로 설정
+                        published_at_timestamp = datetime.strptime(date_str, '%Y-%m-%d')
                     else:
-                        published_at_timestamp = source_published_at
-                except Exception:
+                        # datetime 객체인 경우 날짜만 추출
+                        if isinstance(source_published_at, datetime):
+                            published_at_timestamp = datetime(
+                                source_published_at.year,
+                                source_published_at.month,
+                                source_published_at.day
+                            )
+                        else:
+                            published_at_timestamp = None
+                except Exception as e:
+                    logger.warning("source_published_at_parse_failed", error=str(e), value=source_published_at)
                     published_at_timestamp = None
             
             # UPSERT 쿼리 (INSERT ... ON CONFLICT DO UPDATE)
