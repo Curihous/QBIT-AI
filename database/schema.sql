@@ -30,10 +30,41 @@ CREATE TABLE IF NOT EXISTS news_columns (
     image_url TEXT,  -- 뉴스 기사 이미지 URL
     source_url TEXT,  -- 원본 뉴스 기사 URL
     source_ticker VARCHAR(20),  -- 실제 뉴스가 나온 종목 (직접: 자기 자신, 간접: 상관 종목)
+    source_title TEXT,  -- 원본 기사 제목
+    source_publisher VARCHAR(255),  -- 원본 기사 발행사
+    source_published_at TIMESTAMP,  -- 원본 기사 발행 시각
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_news_columns_created_at ON news_columns(created_at DESC);
+
+-- 기존 테이블에 원문 정보 컬럼 추가 (마이그레이션)
+DO $$ 
+BEGIN
+    -- source_title 컬럼 추가
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'news_columns' AND column_name = 'source_title'
+    ) THEN
+        ALTER TABLE news_columns ADD COLUMN source_title TEXT;
+    END IF;
+    
+    -- source_publisher 컬럼 추가
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'news_columns' AND column_name = 'source_publisher'
+    ) THEN
+        ALTER TABLE news_columns ADD COLUMN source_publisher VARCHAR(255);
+    END IF;
+    
+    -- source_published_at 컬럼 추가
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'news_columns' AND column_name = 'source_published_at'
+    ) THEN
+        ALTER TABLE news_columns ADD COLUMN source_published_at TIMESTAMP;
+    END IF;
+END $$;
 
 
 -- 매매 분석 리포트 테이블
