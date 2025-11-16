@@ -1,31 +1,16 @@
-"""
-기사 크롤링: BeautifulSoup을 이용한 웹 크롤링
-"""
-
 import httpx
 import structlog
 from typing import Optional
 from bs4 import BeautifulSoup
 
+# 기사 크롤링: BeautifulSoup을 이용한 웹 크롤링
 logger = structlog.get_logger()
 
 
 class ArticleScraper:
-    """
-    기사 본문 크롤링 서비스
-    """
     
     @staticmethod
     async def scrape_article(url: str) -> Optional[str]:
-        """
-        BeautifulSoup으로 기사 본문 크롤링
-        
-        Args:
-            url: 기사 URL
-        
-        Returns:
-            기사 본문 텍스트 (실패 시 None)
-        """
         try:
             async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
                 response = await client.get(url, headers={

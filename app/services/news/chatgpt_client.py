@@ -1,8 +1,3 @@
-"""
-뉴스 칼럼용 ChatGPT 클라이언트: OpenAI API를 이용한 칼럼 생성
-JSON 강제 및 프롬프팅 
-"""
-
 import json
 import structlog
 from typing import Optional
@@ -10,6 +5,7 @@ from openai import AsyncOpenAI
 from app.config import get_settings
 from app.models.column_schema import ColumnContent
 
+# 뉴스 칼럼용 ChatGPT 클라이언트: OpenAI API를 이용한 칼럼 생성 (JSON 강제 및 프롬프팅)
 logger = structlog.get_logger()
 
 
@@ -18,7 +14,7 @@ SYSTEM_PROMPT = """
 당신은 초보 투자자에게 복잡한 금융 뉴스를 쉽게 설명하는 경제 칼럼 작가입니다.
 
 입력받은 영문 뉴스 요약을 기반으로, 초보 투자자가 이해할 수 있도록 한국어 투자 칼럼을 작성하세요.
-출력은 반드시 **순수 JSON** 형태로 반환하고, 불필요한 설명이나 마크다운을 추가하지 마세요.
+출력은 반드시 순수 JSON 형태로 반환하고, 불필요한 설명이나 마크다운을 추가하지 마세요.
 
 JSON 구조:
 {
@@ -75,9 +71,6 @@ JSON 구조:
 
 
 class ChatGPTClient:
-    """
-    OpenAI ChatGPT API 클라이언트
-    """
     
     def __init__(self):
         self.settings = get_settings()
@@ -87,16 +80,28 @@ class ChatGPTClient:
         )
         self.model = self.settings.openai_model
     
-    def _create_user_prompt(self, ticker: str, news_title: str, key_sentences: str) -> str:
-        """
-        ChatGPT에 전달할 사용자 프롬프트 생성
-        
-        Args:
-            ticker: 종목 심볼 (예: "AAPL", "ETH-USD")
-            news_title: 뉴스 제목 (영문)
-            key_sentences: TextRank로 추출한 핵심 문장 (영문)
-        """
-        return f"""
+    # ChatGPT에 전달할 사용자 프롬프트 생성
+    def _create_user_prompt(self, ticker: str, news_title: str, key_sentences: str, source_ticker: Optional[str] = None) -> str:
+        if source_ticker and source_ticker != ticker:
+            # 상관종목의 뉴스를 사용하여 원본 종목의 칼럼을 생성하는 경우
+            return f"""
+종목: {ticker} (이 종목에 대한 칼럼을 작성해야 합니다)
+뉴스 출처 종목: {source_ticker} (이 종목의 뉴스를 참고하되, {ticker}에 대한 칼럼을 작성하세요)
+
+뉴스 제목: {news_title}
+
+뉴스 요약 (영문):
+{key_sentences}
+
+**중요**: 위 뉴스는 {source_ticker}에 대한 것이지만, {ticker}에 대한 칼럼을 작성해야 합니다.
+- 뉴스 내용을 {ticker}의 관점에서 해석하거나
+- {ticker}와 {source_ticker}의 연관성을 설명하거나
+- {ticker}에 미치는 영향을 중심으로 작성하세요.
+
+위 내용을 바탕으로 {ticker}에 대한 초보 투자자용 칼럼을 JSON 형식으로 작성해주세요.
+"""
+        else:
+            return f"""
 종목: {ticker}
 뉴스 제목: {news_title}
 
@@ -106,25 +111,16 @@ class ChatGPTClient:
 위 내용을 바탕으로 초보 투자자용 칼럼을 JSON 형식으로 작성해주세요.
 """
     
+    # ChatGPT로 칼럼 생성
     async def generate_column(
         self,
         ticker: str,
         news_title: str,
-        key_sentences: str
+        key_sentences: str,
+        source_ticker: Optional[str] = None
     ) -> Optional[ColumnContent]:
-        """
-        ChatGPT로 칼럼 생성
-        
-        Args:
-            ticker: 종목 심볼
-            news_title: 뉴스 제목 (영문)
-            key_sentences: TextRank 요약 결과 (영문)
-        
-        Returns:
-            ColumnContent 또는 None (실패 시)
-        """
         try:
-            user_prompt = self._create_user_prompt(ticker, news_title, key_sentences)
+            user_prompt = self._create_user_prompt(ticker, news_title, key_sentences, source_ticker)
             
             # OpenAI API 호출
             response = await self.client.chat.completions.create(

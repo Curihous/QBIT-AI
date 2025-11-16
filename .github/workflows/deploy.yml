@@ -20,7 +20,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: '3.11'
+        python-version: '3.13.5'
 
     - name: Set up Buildx
       uses: docker/setup-buildx-action@v3
@@ -77,6 +77,14 @@ jobs:
             -e DB_USER="${{ secrets.DB_USER }}" \
             -e DB_PASSWORD="${{ secrets.DB_PASSWORD }}" \
             ${{ secrets.DOCKER_REPO }}:${{ github.sha }}
+
+          # 데이터베이스 스키마 동기화
+          docker exec qbit-ai psql "host=${{ secrets.DB_HOST }} \
+            port=${{ secrets.DB_PORT }} \
+            dbname=${{ secrets.DB_NAME }} \
+            user=${{ secrets.DB_USER }} \
+            password=${{ secrets.DB_PASSWORD }} \
+            sslmode=require" -f /app/database/schema.sql
 
           # 사용하지 않는 이미지 정리
           docker image prune -f

@@ -1,6 +1,3 @@
-"""
-상관계수 계산: 유동성 Top 3000 종목 간 상관계수 계산 및 저장
-"""
 import asyncio
 import structlog
 import pandas as pd
@@ -9,6 +6,7 @@ from app.services.external import MassiveService
 from app.services.analysis.liquid_stocks_service import LiquidStocksService
 from app.services.database import DatabaseService
 
+# 상관계수 계산: 유동성 Top 3000 종목 간 상관계수 계산 및 저장
 logger = structlog.get_logger()
 
 
@@ -19,15 +17,16 @@ class CorrelationService:
         self.liquid_stocks_service = None
         self.db_service = None
     
+    # 서비스 초기화
     async def initialize(
         self,
         liquid_stocks_service: LiquidStocksService,
         db_service: DatabaseService
     ):
-        """서비스 초기화"""
         self.liquid_stocks_service = liquid_stocks_service
         self.db_service = db_service
     
+    # 상관계수 계산 및 DB 저장
     async def calculate_and_save_correlations(
         self,
         # 과거 종목 데이터 수집: 기본값 90일
@@ -35,18 +34,6 @@ class CorrelationService:
         # 동시 API 호출 제한: 기본값 8개
         max_concurrent: int = 8
     ) -> Dict[str, Any]:
-        """
-        상관계수 계산 및 DB 저장
-        
-        Returns:
-            {
-                "success": True,
-                "total_tickers": 3000,
-                "processed_tickers": 2985,
-                "correlations_saved": 59700,  # 2985 * 20
-                "failed_tickers": ["TICKER1", ...]
-            }
-        """
         try:
             top_n = 20  # 각 종목당 상위 20개 관련 종목 저장
             logger.info("correlation_calculation_started", days=days, top_n=top_n)
@@ -167,14 +154,8 @@ class CorrelationService:
                 "error": str(e)
             }
     
+    # 가격 데이터를 데이터프레임으로 변환 (행: 날짜, 열: 티커, 값: 종가)
     def _build_price_dataframe(self, price_data_dict: Dict[str, List[Dict[str, Any]]]) -> pd.DataFrame:
-        """
-        가격 데이터를 데이터프레임으로 변환
-        
-        행(Index): 날짜 (Date)
-        열(Columns): 티커 (AAPL, MSFT, ...)
-        값(Values): 종가 (Close Price)
-        """
         try:
             # 각 티커별 종가 데이터를 딕셔너리로 변환
             # {ticker: {date: close_price, ...}, ...}
@@ -213,21 +194,12 @@ class CorrelationService:
             )
             return pd.DataFrame()
     
+    # 각 종목당 상위 N개 상관계수만 DB에 저장
     async def _save_top_correlations(
         self,
         correlation_matrix: pd.DataFrame,
         top_n: int = 20
     ) -> int:
-        """
-        각 종목당 상위 20개 상관계수만 DB에 저장
-        
-        Args:
-            correlation_matrix: 상관계수 행렬 
-            top_n: 각 종목당 저장할 상위 관련 종목 개수 (20개로 고정)
-        
-        Returns:
-            저장된 상관계수 개수
-        """
         if not self.db_service:
             raise Exception("DB 서비스가 초기화되지 않았습니다.")
         
@@ -294,24 +266,8 @@ class CorrelationService:
             )
             raise
     
+    # 특정 종목의 관련 종목 조회 (상관계수 기준)
     async def get_related_tickers(self, ticker: str, limit: int = 20) -> List[Dict[str, Any]]:
-        """
-        특정 종목의 관련 종목 조회
-        
-        Args:
-            ticker: 조회할 티커
-            limit: 반환할 개수
-        
-        Returns:
-            [
-                {
-                    "ticker": "MSFT",
-                    "correlation": 0.8542,
-                    "updated_at": "2025-11-03 12:00:00"
-                },
-                ...
-            ]
-        """
         if not self.db_service:
             raise Exception("DB 서비스가 초기화되지 않았습니다.")
         

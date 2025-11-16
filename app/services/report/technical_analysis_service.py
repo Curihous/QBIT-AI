@@ -8,6 +8,7 @@ logger = structlog.get_logger()
 
 class TechnicalAnalysisService:
 
+    # 기술적 지표 계산 (매수/매도 시점 분석)
     def calculate_indicators(
         self,
         candle_data: list[dict],
@@ -46,58 +47,108 @@ class TechnicalAnalysisService:
             logger.error("technical_analysis_error", error=str(e), error_type=type(e).__name__)
             return self._get_default_analysis()
 
+    # 모든 기술적 지표 계산
     def _calculate_all_indicators(self, df: pd.DataFrame) -> pd.DataFrame:
-        """모든 기술적 지표 계산"""
         
         # 1. RSI (14)
-        df['rsi_14'] = ta.rsi(df['close'], length=14)
+        try:
+            df['rsi_14'] = ta.rsi(df['close'], length=14)
+        except Exception as e:
+            logger.warning("rsi_calculation_failed", error=str(e))
         
         # 2. MACD
-        macd = ta.macd(df['close'])
-        if macd is not None and not macd.empty:
-            df['macd'] = macd['MACD_12_26_9']
-            df['macd_signal'] = macd['MACDs_12_26_9']
-            df['macd_hist'] = macd['MACDh_12_26_9']
+        try:
+            macd = ta.macd(df['close'])
+            if macd is not None and not macd.empty:
+                df['macd'] = macd['MACD_12_26_9']
+                df['macd_signal'] = macd['MACDs_12_26_9']
+                df['macd_hist'] = macd['MACDh_12_26_9']
+        except Exception as e:
+            logger.warning("macd_calculation_failed", error=str(e))
         
         # 3. 이동평균선 (SMA 20, 50, 200 / EMA 12, 26)
-        df['sma_20'] = ta.sma(df['close'], length=20)
-        df['sma_50'] = ta.sma(df['close'], length=50)
-        df['sma_200'] = ta.sma(df['close'], length=200)
-        df['ema_12'] = ta.ema(df['close'], length=12)
-        df['ema_26'] = ta.ema(df['close'], length=26)
+        try:
+            if len(df) >= 20:
+                df['sma_20'] = ta.sma(df['close'], length=20)
+            if len(df) >= 50:
+                df['sma_50'] = ta.sma(df['close'], length=50)
+            if len(df) >= 200:
+                df['sma_200'] = ta.sma(df['close'], length=200)
+            if len(df) >= 12:
+                df['ema_12'] = ta.ema(df['close'], length=12)
+            if len(df) >= 26:
+                df['ema_26'] = ta.ema(df['close'], length=26)
+        except Exception as e:
+            logger.warning("moving_average_calculation_failed", error=str(e))
         
-        # 4. Bollinger Bands
-        bbands = ta.bbands(df['close'], length=20)
-        if bbands is not None and not bbands.empty:
-            df['bb_upper'] = bbands['BBU_20_2.0']
-            df['bb_middle'] = bbands['BBM_20_2.0']
-            df['bb_lower'] = bbands['BBL_20_2.0']
+        # 4. Bollinger Bands (length=20, std=2 기본값)
+        try:
+            if len(df) >= 20:
+                bbands = ta.bbands(df['close'], length=20, std=2)
+                if bbands is not None and not bbands.empty:
+                    try:
+                        df['bb_upper'] = bbands['BBU_20_2.0']
+                        df['bb_middle'] = bbands['BBM_20_2.0']
+                        df['bb_lower'] = bbands['BBL_20_2.0']
+                    except KeyError:
+                        # 컬럼명이 다를 경우 동적 찾기 (fallback)
+                        bb_columns = bbands.columns.tolist()
+                        upper_col = next((c for c in bb_columns if c.startswith("BBU_")), None)
+                        middle_col = next((c for c in bb_columns if c.startswith("BBM_")), None)
+                        lower_col = next((c for c in bb_columns if c.startswith("BBL_")), None)
+                        if upper_col and middle_col and lower_col:
+                            df['bb_upper'] = bbands[upper_col]
+                            df['bb_middle'] = bbands[middle_col]
+                            df['bb_lower'] = bbands[lower_col]
+                        else:
+                            logger.warning("bollinger_bands_columns_not_found", available_columns=bb_columns)
+        except Exception as e:
+            logger.warning("bollinger_bands_calculation_failed", error=str(e))
         
         # 5. Stochastic
-        stoch = ta.stoch(df['high'], df['low'], df['close'])
-        if stoch is not None and not stoch.empty:
-            df['stoch_k'] = stoch['STOCHk_14_3_3']
-            df['stoch_d'] = stoch['STOCHd_14_3_3']
+        try:
+            stoch = ta.stoch(df['high'], df['low'], df['close'])
+            if stoch is not None and not stoch.empty:
+                df['stoch_k'] = stoch['STOCHk_14_3_3']
+                df['stoch_d'] = stoch['STOCHd_14_3_3']
+        except Exception as e:
+            logger.warning("stochastic_calculation_failed", error=str(e))
         
         # 6. ADX (추세 강도)
-        adx = ta.adx(df['high'], df['low'], df['close'])
-        if adx is not None and not adx.empty:
-            df['adx'] = adx['ADX_14']
+        try:
+            adx = ta.adx(df['high'], df['low'], df['close'])
+            if adx is not None and not adx.empty:
+                df['adx'] = adx['ADX_14']
+        except Exception as e:
+            logger.warning("adx_calculation_failed", error=str(e))
         
         # 7. ATR (변동성)
-        df['atr'] = ta.atr(df['high'], df['low'], df['close'], length=14)
+        try:
+            df['atr'] = ta.atr(df['high'], df['low'], df['close'], length=14)
+        except Exception as e:
+            logger.warning("atr_calculation_failed", error=str(e))
         
         # 8. OBV (On Balance Volume)
-        df['obv'] = ta.obv(df['close'], df['volume'])
+        try:
+            df['obv'] = ta.obv(df['close'], df['volume'])
+        except Exception as e:
+            logger.warning("obv_calculation_failed", error=str(e))
         
         # 9. 거래량 변화율
-        df['volume_change'] = df['volume'].pct_change() * 100
+        try:
+            df['volume_change'] = df['volume'].pct_change() * 100
+        except Exception as e:
+            logger.warning("volume_change_calculation_failed", error=str(e))
         
         # 10. Williams %R
-        df['willr'] = ta.willr(df['high'], df['low'], df['close'], length=14)
+        try:
+            df['willr'] = ta.willr(df['high'], df['low'], df['close'], length=14)
+        except Exception as e:
+            logger.warning("willr_calculation_failed", error=str(e))
         
         return df
 
+    # 매수/매도 시점의 기술적 지표 분석
     def _analyze_trade_point(
         self,
         df: pd.DataFrame,
@@ -166,12 +217,14 @@ class TechnicalAnalysisService:
 
         return all_indicators
 
+    # 빈 분석 결과 반환
     def _get_empty_point_analysis(self) -> dict[str, any]:
         return {
             "date": "N/A",
             "close_price": 0
         }
 
+    # 기본 분석 결과 반환 (에러 시)
     def _get_default_analysis(self) -> dict[str, any]:
         default = self._get_empty_point_analysis()
         return {
