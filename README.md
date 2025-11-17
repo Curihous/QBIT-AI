@@ -1,6 +1,8 @@
 # QBIT-AI
 
-## 설치 및 실행
+<img width="2352" height="3309" alt="22-큐리포스-포스터파일-png" src="https://github.com/user-attachments/assets/be02acdd-1f23-4e47-a389-fc0bc6012124" />
+
+## 개발가이드
 
 > 권장 Python 버전: **3.13.5**
 
